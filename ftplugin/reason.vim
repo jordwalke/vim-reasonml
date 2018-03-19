@@ -45,7 +45,12 @@ unlet s:save_cpo
 let b:thisProjectsMerlinPath = esy#ExecCached("which ocamlmerlin")
 call ReasonMaybeUseThisMerlinForAllProjects(b:thisProjectsMerlinPath)
 
+" ReasonMaybeUseThisMerlinForAllProjects should set
+" g:vimreason_ocamlmerlin_path if it was able to.
 if !empty(g:vimreason_ocamlmerlin_path)
+  if exists('g:merlin')
+    call merlin#Register()
+  endif
   let b:did_ftplugin = 1
 else
   " Do not set b:did_ftplugin. Could not find merlin.

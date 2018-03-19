@@ -113,13 +113,6 @@ function! ReasonMaybeUseThisMerlinForAllProjects(thisProjectsMerlinPath)
       endif
     endif
   endif
-
-  if !empty(g:vimreason_ocamlmerlin_path)
-    if exists('g:merlin')
-      call merlin#Register()
-    else
-    endif
-  endif
 endfunction
 " This is how you customize merlin to allow you to create an environment
 " b:merlin_environment, as well as select a specific binary which may be
