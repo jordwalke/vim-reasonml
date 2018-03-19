@@ -1,0 +1,36 @@
+*reason.txt*      Filetype plugin for Reason
+
+==============================================================================
+CONTENTS                                                      *reason* *ft-reason*
+
+Commands:
+
+:ReasonPrettyPrint
+  Pretty print the Reason code.
+
+:EsyFetchProjectInfo
+
+:EsyReset
+  Resets the esy project cache in Vim.
+
+:EsyExec
+  Allows executing script commands in the context of an esy project if your
+  current buffer exists in a built esy project. It will fall back to global
+  environment if you are not in a built esy project, or if you are in a buffer
+  with no name/location.
+
+==============================================================================
+INTRODUCTION                                                      *reason-intro*
+
+
+==============================================================================
+SETTINGS                                                       *reason-settings*
+
+
+==============================================================================
+MAPPINGS                                                       *reason-mappings*
+
+
+
+==============================================================================
+ vim:tw=78:sw=4:noet:ts=8:ft=help:norl:
