@@ -1,15 +1,23 @@
 " Language:     Reason
 " Description:  Vim ftplugin file for Reason
 
-" Should be tracked per-buffer/project eventually.
-if exists("b:did_ftplugin")
+if exists("b:finished_activating_buffer_successfully")
   finish
 endif
+
+if exists("b:doing_ftplugin")
+  " Something had set ft=reason during the loading of this ftplugin/reason.vim
+  " file! This happens if we lazily load plugins.
+  finish
+endif
+
+let b:doing_ftplugin = 1
 
 " Still waiting to load an esy project. It's okay, you can retry again by
 " resettig the fieltype=reason
 let projectRoot = esy#FetchProjectRoot()
 if projectRoot == []
+  let b:doing_ftplugin =0
   finish
 else
   let info = esy#FetchProjectInfoForProjectRoot(projectRoot)
@@ -24,6 +32,7 @@ else
     else
       if status != 'built'
         call reason#VimReasonShortMsg("Esy Status: " . status . ". IDE features will activate once esy project is installed, built. set ft=reason to refresh.")
+        let b:doing_ftplugin =0
         finish
       endif
     endif
@@ -43,17 +52,22 @@ unlet s:save_cpo
 " this plugin. The majority of the remaining code is simply copied from
 " Vim-Plug in order to reuse Vim-Plug's lazy loading code.
 let b:thisProjectsMerlinPath = esy#ExecCached("which ocamlmerlin")
+" Calling into this function, actually ends up setting ft=reason so you get
+" caught in a loop which is why we have a b:doing_ftplugin variable). If
+" b:doing_ftplugin is 1, then it means we're in a "reentrant" ftplugin call
+" and we know to bail, letting the original call succeed.
 call ReasonMaybeUseThisMerlinForAllProjects(b:thisProjectsMerlinPath)
 
 " ReasonMaybeUseThisMerlinForAllProjects should set
 " g:vimreason_ocamlmerlin_path if it was able to.
 if !empty(g:vimreason_ocamlmerlin_path)
   if exists('g:merlin')
-    call merlin#Register()
+    let res = merlin#Register()
   endif
-  let b:did_ftplugin = 1
+  let b:finished_activating_buffer_successfully = 1
 else
-  " Do not set b:did_ftplugin. Could not find merlin.
+  " Do not set b:finished_activating_buffer_successfully. Could not find merlin.
   let res = reason#VimReasonShortMsg("Could not find merlin support. Is it listed in your devDependencies?")
-  finish
 endif
+
+let b:doing_ftplugin = 0
