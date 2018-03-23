@@ -33,6 +33,20 @@ function! esy#HasEsyField(packageText)
   return a:packageText =~ "\"esy\""
 endfunction
 
+" We support the ability for a `bsconfig.json` file to include a
+" "packageRoot": "./relPath" field so that the actual esy root can exist
+" somewhere different than the bsconfig.json.
+" This allows your dev tools to exist somewhere other than your bsconfig,
+" which means one esy project can power the dev tools of multiple bsconfigs.
+function! esy#BSConfigPackageRoot(packageConfigStr)
+  let res = matchlist(a:packageConfigStr, '"packageRoot":[^"]*"\([^"]*\)"')
+  if empty(res)
+    return ''
+  else
+    return res[1]
+  endif
+endfunction
+
 function! esy#ProjectNameOfPackageText(packageConfigStr)
   let res = matchlist(a:packageConfigStr, '"name":[^"]*"\([^"]*\)"')
   if empty(res)
@@ -104,24 +118,41 @@ endfunction
 " Returns empty list if not a valid esy project.
 function! esy#FetchProjectRoot()
   let l:isUnnamed=expand("%") == ''
-	let l:cwd = expand("%:p:h")
-	let l:rp = fnamemodify('/', ':p')
-	let l:hp = fnamemodify($HOME, ':p')
-	while l:cwd != l:hp && l:cwd != l:rp
-    let l:esyJsonPath = resolve(l:cwd . '/esy.json')
-    if filereadable(l:esyJsonPath)
+  let l:cwd = expand("%:p:h")
+  let l:rp = fnamemodify('/', ':p')
+  let l:hp = fnamemodify($HOME, ':p')
+  while l:cwd != l:hp && l:cwd != l:rp
+    let esyJsonPath = resolve(l:cwd . '/esy.json')
+    if filereadable(esyJsonPath)
       return [l:cwd, 'esy.json']
-    else
-      let packageJsonPath = resolve(l:cwd . '/package.json')
-      if filereadable(packageJsonPath)
-        return [l:cwd, 'package.json']
+    endif
+    let packageJsonPath = resolve(l:cwd . '/package.json')
+    if filereadable(packageJsonPath)
+      return [l:cwd, 'package.json']
+    endif
+    let bsConfigJsonPath = resolve(l:cwd . '/bsconfig.json')
+    if filereadable(bsConfigJsonPath)
+      " It is unfortunate that we need to read the file just to tell if it has
+      " the designator, but at least it's only for bsconfig.json, and if the
+      " other files weren't present.
+      let packageText = join(readfile(bsConfigJsonPath), "\n")
+      let relativePackageRoot = esy#BSConfigPackageRoot(packageText)
+      if !empty(relativePackageRoot)
+        let alegedProjectRoot = resolve(l:cwd . '/' . relativePackageRoot)
+        let redirectedEsyJsonPath = resolve(alegedProjectRoot . '/esy.json')
+        if filereadable(redirectedEsyJsonPath)
+          return [alegedProjectRoot, 'esy.json']
+        endif
+        let redirectedPackageJsonPath = resolve(alegedProjectRoot . '/package.json')
+        if filereadable(redirectedPackageJsonPath)
+          return [alegedProjectRoot, 'package.json']
+        endif
       endif
-		endif
-		let l:cwd = resolve(l:cwd . '/..')
-	endwhile
+    endif
+    let l:cwd = resolve(l:cwd . '/..')
+  endwhile
   return []
 endfunction
-
 
 "
 " Allows defering of running commands the first time until built once. Don't
