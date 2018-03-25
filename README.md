@@ -12,3 +12,9 @@ merely due to using the older merlin protocol.
 For a more supported plugin, use
 [vim-reason-plus](https://github.com/reasonml-editor/vim-reason-plus) which
 uses an LSP bridge.
+
+
+<img src="./doc/screenshot.png" />
+
+
+See [The reason-vim Plugin Documentation](./doc/vim-reason.txt).

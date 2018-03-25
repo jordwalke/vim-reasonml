@@ -12,6 +12,35 @@ if exists("g:loaded_vimreason")
 endif
 let g:loaded_vimreason = 1
 
+
+" User Customizable Config Variables:
+
+if !exists('g:vimreason_extra_args_expr_reason')
+  let g:vimreason_extra_args_expr_reason=''
+endif
+if !exists('g:vimreason_project_airline')
+  let g:vimreason_project_airline=1
+endif
+if !exists('g:vimreason_clean_project_airline')
+  let g:vimreason_clean_project_airline=0
+endif
+if !exists('g:vimreason_syntastic_airline')
+  let g:vimreason_syntastic_airline=1
+endif
+
+
+" User Customizable Lint And Error Symbols:
+if !exists('g:vimBoxLinterErrorSymbol')
+  let g:vimBoxLinterErrorSymbol="⮿"
+endif
+if !exists('g:vimBoxLinterWarningSymbol')
+  let g:vimBoxLinterWarningSymbol="⮿"
+endif
+if !exists('g:vimBoxLinterOkSymbol')
+  let g:vimBoxLinterOkSymbol="☻"
+endif
+
+
 let g:vimreason_ocamlmerlin_path=''
 
 " From auto-format plugin:
