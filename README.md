@@ -14,7 +14,7 @@ For a more supported plugin, use
 uses an LSP bridge.
 
 
-<img src="./doc/screenshot.png" />
+<img width="648px" height="432px" src="./doc/screenshot.png" />
 
 
 See [The reason-vim Plugin Documentation](./doc/vim-reason.txt).
