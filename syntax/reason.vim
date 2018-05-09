@@ -23,7 +23,7 @@ syn keyword   rustKeyword     box nextgroup=rustBoxPlacement skipwhite skipempty
 syn keyword   rustKeyword     extern nextgroup=rustExternCrate,rustObsoleteExternMod skipwhite skipempty
 " syn keyword   rustKeyword     fun nextgroup=rustFuncName skipwhite skipempty
 syn keyword   rustKeyword     unsafe where while
-syn keyword   rustStorage     fun mutable class pub pri val inherit let rec nonrec and module type exception open include
+syn keyword   rustStorage     fun mutable class pub pri val inherit let rec nonrec and module type exception open include constraint
 " FIXME: Scoped impl's name is also fallen in this category
 " syn keyword   rustStorageIdent   let and module type nextgroup=rustIdentifier skipwhite skipempty
 
@@ -35,10 +35,12 @@ syn keyword   rustObsoleteExternMod mod contained nextgroup=rustIdentifier skipw
 syn match     rustIdentifier  contains=rustIdentifierPrime "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
 syn match     rustFuncName    "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
 "
-syn match labelArgument "\(\l\|_\)\(\w\|'\)*::\(?\)\?"lc=0   "Allows any space between label name and ::
-syn match labelArgumentPunned "::\(?\)\?\(\l\|_\)\(\w\|'\)*"lc=0   "Allows any space between label name and ::
+" syn match labelArgument "\(\l\|_\)\(\w\|'\)*::\(?\)\?"lc=0   "Allows any space between label name and ::
+" syn match labelArgumentPunned "::\(?\)\?\(\l\|_\)\(\w\|'\)*"lc=0   "Allows any space between label name and ::
+syn match labelArgument "\~\(\l\|_\)\(\w\|'\)*"lc=0   "Allows any space between label name and ::
+syn match labelArgumentPunned "\~\(\l\|_\)\(\w\|'\)*\(?\)\?"lc=0   "Allows any space between label name and ::
 
-syn match    rustEnumVariant  "\<\u\(\w\|'\)*\>[^\.]"me=e-1
+syn match    rustEnumVariant  "\<\u\(\w\|'\)*\>"
 " Polymorphic variants
 syn match    rustEnumVariant  "`\w\(\w\|'\)*\>"
 
