@@ -16,7 +16,7 @@ let g:loaded_vimreason = 1
 " User Customizable Config Variables:
 
 if !exists('g:vimreason_extra_args_expr_reason')
-  let g:vimreason_extra_args_expr_reason=''
+  let g:vimreason_extra_args_expr_reason='""'
 endif
 if !exists('g:vimreason_project_airline')
   let g:vimreason_project_airline=1
