@@ -47,6 +47,10 @@ here are their defaults.
 
   let g:vimreason_extra_args_expr_reason=''
 
+* Customize `refmt` location when running `:ReasonPrettyPrint`
+  Defaults to `"refmt"`
+
+  let g:vimreason_reason='/My/Path/to/refmt'
 
 * Whether or not to show esy project status in vim-airline.
 
