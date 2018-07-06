@@ -45,10 +45,11 @@ let g:vimreason_ocamlmerlin_path=''
 
 " From auto-format plugin:
 " https://github.com/Chiel92/vim-autoformat/blob/master/plugin/autoformat.vim
+
 if !exists('g:vimreason_reason')
   let g:vimreason_reason = "refmt"
 endif
-let g:vimreason_args_expr_reason = '"--print re --interface " .  (match(expand("%"), "\\.rei$") == -1 ? "false " : "true ") . " --parse " . (expand("%:e") == "" ? "re" : expand("%:e"))'
+let g:vimreason_args_expr_reason = '"--print re " .  (match(expand("%"), "\\.rei$") == -1 ? "--interface false " : "--interface true ")'
 
 let s:save_cpo = &cpo
 set cpo&vim
