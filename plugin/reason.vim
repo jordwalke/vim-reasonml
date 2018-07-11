@@ -12,9 +12,11 @@ if exists("g:loaded_vimreason")
 endif
 let g:loaded_vimreason = 1
 
-
 " User Customizable Config Variables:
 
+if !exists('g:vimreason_precise_parse_errors')
+  let g:vimreason_precise_parse_errors=1
+endif
 if !exists('g:vimreason_extra_args_expr_reason')
   let g:vimreason_extra_args_expr_reason='""'
 endif

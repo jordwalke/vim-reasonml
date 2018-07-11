@@ -43,6 +43,13 @@ CONFIGURATION                                             *reason-configuration*
 The following values may be set in your vim configuration. The values shown
 here are their defaults.
 
+* Whether or not to return more accurate syntax error locations along with
+  merlin errors. This is not recommended if you have error highlighting while
+  typing, due to performance. If you only show/update merlin errors upon save,
+  then this should remain enabled.
+
+  let g:vimreason_precise_parse_errors=1
+
 * Customize arguments passed to `refmt` when running `:ReasonPrettyPrint`
 
   let g:vimreason_extra_args_expr_reason=''
