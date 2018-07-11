@@ -39,7 +39,8 @@ function! SyntaxCheckers_reason_merlin_GetLocList()
       let appearsToHaveSyntaxErr = 0
       while j < numOriginalErrors
         let err = merlinErrList[j]
-        if empty(appearsToHaveSyntaxErr) && !empty(matchstr(err['text'],'\csyntax'))
+        if empty(appearsToHaveSyntaxErr) &&
+              \ (!empty(matchstr(err['text'],'\csyntax')) || !empty(matchstr(err['text'],'invalidCharacter.orComment.orString')))
            let appearsToHaveSyntaxErr = err
         endif
         let j = j + 1
