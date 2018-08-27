@@ -1,1 +1,1 @@
-au BufRead,BufNewFile jbuild set ft=dune
+au BufRead,BufNewFile dune set ft=dune
