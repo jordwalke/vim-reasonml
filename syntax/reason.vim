@@ -18,15 +18,11 @@ syn keyword   reasonConditional try switch if else for while
 syn keyword   reasonOperator    as to downto
 
 " syn keyword   reasonKeyword     fun nextgroup=reasonFuncName skipwhite skipempty
-syn keyword   reasonKeyword     raise
-syn keyword   reasonKeyword     when where 
-syn keyword   reasonAssert      raise assert
-syn keyword   reasonStorage     fun mutable class pub pri val inherit let external rec nonrec and module type exception open include constraint
-" FIXME: Scoped impl's name is also fallen in this category
-" syn keyword   reasonStorageIdent   let and module type nextgroup=reasonIdentifier skipwhite skipempty
+syn match     reasonAssert      "\<assert\(\w\)*"
+syn match     reasonFailwith    "\<failwith\(\w\)*"
 
-" This is to get the `bar` part of `extern crate "foo" as bar;` highlighting.
-syn match   reasonExternCrateString /".*"\_s*as/ contained nextgroup=reasonIdentifier skipwhite transparent skipempty contains=reasonString,reasonOperator
+syn keyword   reasonStorage     when where fun mutable class pub pri val inherit let external rec nonrec and module type exception open include constraint
+" FIXME: Scoped impl's name is also fallen in this category
 
 syn match     reasonIdentifier  contains=reasonIdentifierPrime "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
 syn match     reasonFuncName    "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
@@ -36,11 +32,15 @@ syn match     reasonFuncName    "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)
 syn match labelArgument "\~\(\l\|_\)\(\w\|'\)*"lc=0   "Allows any space between label name and ::
 syn match labelArgumentPunned "\~\(\l\|_\)\(\w\|'\)*\(?\)\?"lc=0   "Allows any space between label name and ::
 
-syn match    reasonEnumVariant  "\<\u\(\w\|'\)*\>"
+syn match    reasonConstructor  "\<\u\(\w\|'\)*\>"
 " Polymorphic variants
-syn match    reasonEnumVariant  "`\w\(\w\|'\)*\>"
+syn match    reasonConstructor  "`\w\(\w\|'\)*\>"
 
-syn match    reasonModPath  "\<\u\w*\."
+syn match    reasonModPath  "\u\(\w\|'\)* *\."he=e-1
+syn match    reasonModPath  "\(\<open\s\+\)\@<=\u\(\w\|\.\)*"
+syn match    reasonModPath  "\(\<include\s\+\)\@<=\u\(\w\|\.\)*"
+syn match    reasonModPath  "\(\<module\s\+\)\@<=\u\(\w\|\.\)*"
+syn match    reasonModPath  "\(\<module\s\+\u\w*\s*=\s*\)\@<=\u\(\w\|\.\)*"
 
 
 " {} are handled by reasonFoldBraces
@@ -49,9 +49,6 @@ syn match    reasonModPath  "\<\u\w*\."
 syn region reasonMacroRepeat matchgroup=reasonMacroRepeatDelimiters start="$(" end=")" contains=TOP nextgroup=reasonMacroRepeatCount
 syn match reasonMacroRepeatCount ".\?[*+]" contained
 syn match reasonMacroVariable "$\w\+"
-
-" Reserved (but not yet used) keywords {{{2
-syn keyword   reasonReservedKeyword alignof become do offsetof priv pure sizeof typeof unsized yield abstract virtual final override macro
 
 " Built-in types {{{2
 syn keyword   reasonType        result int float option list array unit ref bool string
@@ -79,9 +76,9 @@ syn keyword reasonTrait Default
 syn keyword reasonTrait Iterator Extend IntoIterator
 syn keyword reasonTrait DoubleEndedIterator ExactSizeIterator
 syn keyword reasonEnum Option
-syn keyword reasonEnumVariant Some None
+syn keyword reasonConstructor Some None
 syn keyword reasonEnum Result
-syn keyword reasonEnumVariant Ok Error
+syn keyword reasonConstructor Ok Error
 
 " Other syntax {{{2
 syn keyword   reasonSelf        self
@@ -194,7 +191,7 @@ hi def link reasonCharacter     Character
 hi def link reasonNumber        Number
 hi def link reasonBoolean       Boolean
 hi def link reasonEnum          reasonType
-hi def link reasonEnumVariant   Function
+hi def link reasonConstructor   Function
 hi def link reasonModPath       Include
 hi def link reasonConstant      Constant
 hi def link reasonSelf          Constant
@@ -202,7 +199,6 @@ hi def link reasonFloat         Float
 hi def link reasonArrowCharacter reasonOperator
 hi def link reasonOperator      Keyword
 hi def link reasonKeyword       Keyword
-hi def link reasonReservedKeyword Error
 hi def link reasonConditional   Conditional
 hi def link reasonIdentifier    Identifier
 hi def link reasonCapsIdent     reasonIdentifier
@@ -213,19 +209,13 @@ hi def link reasonCommentLine   Comment
 hi def link reasonCommentLineDoc Comment
 hi def link reasonCommentBlock  reasonCommentLine
 hi def link reasonCommentBlockDoc reasonCommentLineDoc
-hi def link reasonAssert        Keyword
-hi def link reasonPanic         PreCondit
+hi def link reasonAssert        Precondit
+hi def link reasonFailwith      PreCondit
 hi def link reasonType          Type
 hi def link reasonTodo          Todo
 hi def link reasonAttribute     PreProc
 hi def link reasonStorage       Keyword
-hi def link reasonStorageIdent StorageClass
 hi def link reasonObsoleteStorage Error
-
-" Other Suggestions:
-" hi reasonAttribute ctermfg=cyan
-" hi reasonAssert ctermfg=yellow
-" hi reasonPanic ctermfg=red
 
 syn sync minlines=200
 syn sync maxlines=500
