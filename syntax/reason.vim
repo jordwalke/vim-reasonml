@@ -208,7 +208,7 @@ hi def link reasonShebang       Comment
 " hi def link reasonCommentLine   Comment
 " hi def link reasonCommentLineDoc Comment
 hi def link reasonCommentBlock  Comment
-hi def link reasonCommentBlockDoc reasonCommentLineDoc
+hi def link reasonCommentBlockDoc Comment
 hi def link reasonAssert        Precondit
 hi def link reasonFailwith      PreCondit
 hi def link reasonType          Type
