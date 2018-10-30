@@ -36,7 +36,7 @@ syn match    reasonConstructor  "\<\u\(\w\|'\)*\>"
 " Polymorphic variants
 syn match    reasonConstructor  "`\w\(\w\|'\)*\>"
 
-syn match    reasonModPath  "\u\(\w\|'\)* *\."he=e-1
+syn match    reasonModPath  "\<\u\(\w\|'\)* *\."he=e-1
 syn match    reasonModPath  "\(\<open\s\+\)\@<=\u\(\w\|\.\)*"
 syn match    reasonModPath  "\(\<include\s\+\)\@<=\u\(\w\|\.\)*"
 syn match    reasonModPath  "\(\<module\s\+\)\@<=\u\(\w\|\.\)*"
