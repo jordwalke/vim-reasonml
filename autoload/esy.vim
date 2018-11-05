@@ -409,7 +409,7 @@ function! esy#ProjectCommandForProjectRoot(projectRoot, cmd)
   if a:projectRoot == []
     return "You are not in an esy project. Open a file in an esy project, or cd to one."
   else
-    let ret = xolox#misc#os#exec({'command': 'esy ' . a:cmd, 'stdin': a:input, 'check': 0})
+    let res = xolox#misc#os#exec({'command': 'esy ' . a:cmd, 'check': 0})
     if res['exit_code'] == 0
       return join(res['stdout'], "\n")
     else
