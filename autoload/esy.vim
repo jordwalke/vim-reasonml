@@ -379,6 +379,7 @@ function! esy#ProjectExecForProjectRoot(projectRoot, cmd, mandateEsy, input)
   else
     " let l:commandEnv='C:/Users/jwalke/Desktop/command-env.bat'
     let l:commandEnv=a:projectRoot[0] . '/node_modules/.cache/_esy/build/bin/command-env'
+    let l:commandExec=a:projectRoot[0] . '/node_modules/.cache/_esy/build/bin/command-exec'
     if a:mandateEsy && (esy#FetchProjectInfoForProjectRoot(a:projectRoot)[2] != 'built' || !filereadable(l:commandEnv))
       throw "called esy#FetchProjectInfoForProjectRoot on a project not installed and built " . a:projectRoot[0]
     else
@@ -392,7 +393,7 @@ function! esy#ProjectExecForProjectRoot(projectRoot, cmd, mandateEsy, input)
       else
         " no need to create intermediate files for non-win
         let g:esy_last_cmd_prefix = ''
-        let ret = xolox#misc#os#exec({'command': l:commandEnv . a:cmd, 'stdin': a:input, 'check': 0})
+        let ret = xolox#misc#os#exec({'command': 'source ' . l:commandEnv . ' && ' . a:cmd, 'stdin': a:input, 'check': 0})
       endif
     endif
   endif
