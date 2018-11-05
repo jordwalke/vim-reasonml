@@ -16,13 +16,17 @@ let g:plugs_reasonPluginLoader = {}
 
 let s:is_win = has('win32') || has('win64')
 
+function! s:trimStr(string)
+  return substitute(a:string, '\n\+$', '', '')
+endfunction
+
 if s:is_win
   function! s:rtp(spec)
     return s:path(a:spec.dir . get(a:spec, 'rtp', ''))
   endfunction
 
   function! s:path(path)
-    return s:trim(substitute(a:path, '/', '\', 'g'))
+    return s:trimStr(substitute(a:path, '/', '\', 'g'))
   endfunction
 
   function! s:dirpath(path)
@@ -34,7 +38,7 @@ else
   endfunction
 
   function! s:path(path)
-    return s:trim(a:path)
+    return s:trimStr(a:path)
   endfunction
 
   function! s:dirpath(path)

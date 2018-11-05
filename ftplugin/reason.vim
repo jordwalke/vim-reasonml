@@ -13,6 +13,10 @@ endif
 
 let b:doing_ftplugin = 1
 
+
+" call ReasonEnsureShellPlugins()
+
+
 " Still waiting to load an esy project. It's okay, you can retry again by
 " resettig the fieltype=reason
 let projectRoot = esy#FetchProjectRoot()
@@ -45,18 +49,19 @@ set cpo&vim
 let &cpo = s:save_cpo
 unlet s:save_cpo
 
-
 " vim-reason-loader code
 " =============
 " The following two "if executable" checks are the primary original code for
 " this plugin. The majority of the remaining code is simply copied from
 " Vim-Plug in order to reuse Vim-Plug's lazy loading code.
-let b:thisProjectsMerlinPath = esy#ExecCached("which ocamlmerlin")
+let b:thisProjectsMerlinPath = esy#PlatformLocateBinary("ocamlmerlin")
 " Calling into this function, actually ends up setting ft=reason so you get
 " caught in a loop which is why we have a b:doing_ftplugin variable). If
 " b:doing_ftplugin is 1, then it means we're in a "reentrant" ftplugin call
 " and we know to bail, letting the original call succeed.
-call ReasonMaybeUseThisMerlinForAllProjects(b:thisProjectsMerlinPath)
+if b:thisProjectsMerlinPath != -1
+  call ReasonMaybeUseThisMerlinForAllProjects(b:thisProjectsMerlinPath)
+endif
 
 " ReasonMaybeUseThisMerlinForAllProjects should set
 " g:vimreason_ocamlmerlin_path if it was able to.

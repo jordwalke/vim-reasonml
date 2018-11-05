@@ -12,6 +12,11 @@ if exists("g:loaded_vimreason")
 endif
 let g:loaded_vimreason = 1
 
+" Get symlink resolved path to current script. Has to be done at top level
+" scope, not in function.
+let s:currentFilePath = resolve(expand('<sfile>:p'))
+let s:vimReasonPluginRoot = fnamemodify(fnamemodify(s:currentFilePath, ':h'), ':h')
+
 " User Customizable Config Variables:
 
 if !exists('g:vimreason_precise_parse_errors')
@@ -43,6 +48,7 @@ if !exists('g:vimBoxLinterOkSymbol')
 endif
 
 
+let g:vimreason_did_ensure_shell_plugins=0
 let g:vimreason_ocamlmerlin_path=''
 
 " From auto-format plugin:
@@ -63,6 +69,66 @@ if exists('g:syntastic_extra_filetypes')
 else
   let g:syntastic_extra_filetypes = ['reason']
 endif
+
+" Utilities: functions copy/pasted from reasonPluginLoader.vim Prefixed with
+" __ so they don't show up in autocompletion in command line etc.
+" TODO: These should go into a xolox/misc fork.
+
+" For some reason this was needed when the binaries ocamlmerlin/refmt were
+" symlinks.
+function! __ReasonUtilsTrimStr(string)
+  return substitute(a:string, '\n\+$', '', '')
+endfunction
+
+let s:is_win = has('win32') || has('win64')
+if s:is_win
+  function! __ReasonUtilsPath(path)
+    return __ReasonUtilsTrimStr(substitute(a:path, '/', '\', 'g'))
+  endfunction
+
+  function! __ReasonUtilsDirPath(path)
+    return __ReasonUtilsPath(a:path) . '\'
+  endfunction
+else
+  function! __ReasonUtilsPath(path)
+    return __ReasonUtilsTrimStr(a:path)
+  endfunction
+
+  function! __ReasonUtilsDirPath(path)
+    return substitute(a:path, '[/\\]*$', '/', '')
+  endfunction
+endif
+
+
+
+" " No longer necessary as we interleave the vendoring into the plugin tree.
+" " We just need to hope two coppies of the same xolox plugins installed won't
+" " colide.
+" function! ReasonEnsureShellPlugins()
+"   echomsg "TRYING TO ENSURE "
+"   if g:vimreason_did_ensure_shell_plugins
+"     return
+"   endif
+"   let g:vimreason_did_ensure_shell_plugins=1
+"   " Setup Shell Utilities:
+"   " If they don't already have good shell integration installed, load the plugin
+"   " dynamically.
+"   if (!exists("*xolox#misc#os#exec"))
+"     echomsg "misc.os doesnt exist"
+"     let vimMiscDir = __ReasonUtilsDirPath(s:vimReasonPluginRoot . '/vendor/vim-misc')
+"     let vimShellDir = __ReasonUtilsDirPath(s:vimReasonPluginRoot . '/vendor/vim-shell')
+"     let g:plugs_reasonPluginLoader={}
+"     let g:plugs_reasonPluginLoader['vim-misc'] = {'dir': vimMiscDir}
+"     echomsg "loading " . vimMiscDir . " and " . vimShellDir
+"     " TODO: Make reasonPluginLoader do this rtp modification like VimPlug.
+"     call call(function("ReasonPluginLoaderLoad"), ['vim-misc'])
+"     execute "set rtp+=".vimMiscDir
+"     let g:plugs_reasonPluginLoader={}
+"     let g:plugs_reasonPluginLoader['vim-shell'] = {'dir': vimShellDir}
+"     call call(function("ReasonPluginLoaderLoad"), ['vim-shell'])
+"     execute "set rtp+=".vimShellDir
+"   endif
+" endfunction
 
 
 function! DoReasonPrettyPrint()
@@ -86,61 +152,33 @@ command -nargs=* ReasonPrettyPrint :call DoReasonPrettyPrint(<f-args>)
 let &cpo = s:save_cpo
 unlet s:save_cpo
 
-" For some reason this was needed when the binaries ocamlmerlin/refmt were
-" symlinks.
-function! s:trimStr(string)
-  return substitute(a:string, '\n\+$', '', '')
+" Wat the following is true:
+"   "asdf" == 0
+function! s:isZero(a)
+  return type(a:a) == v:t_string ? 0 : (type(a:a) == v:t_number ? (a:a == 0) : 0)
 endfunction
-
-
-" Utility functions copy/pasted from reasonPluginLoader.vim
-let s:is_win = has('win32') || has('win64')
-if s:is_win
-  function! s:rtp(spec)
-    return s:path(a:spec.dir . get(a:spec, 'rtp', ''))
-  endfunction
-
-  function! s:path(path)
-    return s:trim(substitute(a:path, '/', '\', 'g'))
-  endfunction
-
-  function! s:dirpath(path)
-    return s:path(a:path) . '\'
-  endfunction
-else
-  function! s:rtp(spec)
-    return s:dirpath(a:spec.dir . get(a:spec, 'rtp', ''))
-  endfunction
-
-  function! s:path(path)
-    return s:trim(a:path)
-  endfunction
-
-  function! s:dirpath(path)
-    return substitute(a:path, '[/\\]*$', '/', '')
-  endfunction
-endif
 
 function! ReasonMaybeUseThisMerlinForAllProjects(thisProjectsMerlinPath)
   if !empty(a:thisProjectsMerlinPath)
-    let thisProjectsMerlinPath = resolve(s:trimStr(a:thisProjectsMerlinPath))
+    let thisProjectsMerlinPath = resolve(__ReasonUtilsTrimStr(a:thisProjectsMerlinPath))
     if empty(g:vimreason_ocamlmerlin_path)
       " Set the global merlin to this project's merlin.
       let g:vimreason_ocamlmerlin_path = thisProjectsMerlinPath
       " If installed through an esy sandboxed npm release prebuilt binaries find
       " the real location.
       if g:vimreason_ocamlmerlin_path =~ "reason-cli"
-        let g:vimreason_ocamlmerlin_path = s:trimStr(system('ocamlmerlin ----where'))
+        let g:vimreason_ocamlmerlin_path = __ReasonUtilsTrimStr(system('ocamlmerlin ----where'))
       endif
 
-      let ocamlmerlin=substitute(g:vimreason_ocamlmerlin_path,'ocamlmerlin$','','') . "../share/merlin/vim/"
+      let ocamlmerlin=substitute(g:vimreason_ocamlmerlin_path,'ocamlmerlin\(\.exe\)\?$','','') . "../share/merlin/vim/"
+      let ocamlmerlinRtp = __ReasonUtilsDirPath(ocamlmerlin)
       " syntastic. Enabled by default, no-op when syntastic isn't present
       let g:syntastic_ocaml_checkers=['merlin']
-      let g:syntastic_reason_checkers=['merlin']
-      let g:plugs_reasonPluginLoader['merlin'] = {'dir': (s:dirpath(ocamlmerlin))}
+      let g:plugs_reasonPluginLoader={}
+      let g:plugs_reasonPluginLoader['merlin'] = {'dir': (ocamlmerlinRtp)}
       call call(function("ReasonPluginLoaderLoad"), keys(g:plugs_reasonPluginLoader))
       " TODO: Make reasonPluginLoader do this rtp modification like VimPlug.
-      execute "set rtp+=".ocamlmerlin
+      execute "set rtp+=".ocamlmerlinRtp
     else
       if thisProjectsMerlinPath != g:vimreason_ocamlmerlin_path
         let res = reason#VimReasonShortMsg("Warning: Starting merlin for new project, using a previously loaded merlin which differs. This might cause issues. See g:vimreason_ocamlmerlin_path and b:thisProjectsMerlinPath")
@@ -148,10 +186,15 @@ function! ReasonMaybeUseThisMerlinForAllProjects(thisProjectsMerlinPath)
     endif
   endif
 endfunction
+
 " This is how you customize merlin to allow you to create an environment
 " b:merlin_environment, as well as select a specific binary which may be
 " different from the one used to load plugin code.
 function! MerlinSelectBinary()
-  let b:merlin_env = esy#FetchEnvCached()
+  let projectRoot = esy#FetchProjectRoot()
+  let env = esy#ProjectEnv(projectRoot)
+  if !empty(projectRoot)
+    let b:merlin_env = env
+  endif
   return g:vimreason_ocamlmerlin_path
 endfunction

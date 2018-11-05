@@ -5,6 +5,10 @@ endfunction
 
 
 function! refmt#Refmt(...)
+    " Only want to check at most once. Otherwise it's too slow
+    if !exists('b:reason_did_check_refmt_exists')
+      let b:reason_did_check_refmt_exists = 0
+    endif
     let type = a:0 ? a:1 : &filetype
     "Support composite filetypes by replacing dots with underscores
     let type = substitute(type, "[.]", "_", "g")
@@ -39,10 +43,10 @@ function! refmt#Refmt(...)
     let inLines = getline(1,'$')
     let buffContents = join(inLines, "\n")
     let out = esy#ExecWithStdIn(totalCommand, buffContents)
-    if v:shell_error
+    if out['exit_code'] != 0
+      let out = join(out['stderr'], " ")
       " Grab the original output.
       let originalOut = substitute(out, "\001", '', 'g')
-      let originalOut = substitute(originalOut, '\n', ' ', 'g')
       let originalOut = substitute(originalOut, '\m\s\{2,}', ' ', 'g')
       let originalOut = substitute(originalOut, '\m^\s\+', '', '')
       let originalOut = substitute(originalOut, '\m\s\+$', '', '')
@@ -50,16 +54,21 @@ function! refmt#Refmt(...)
       " path. We didn't want to do this before trying to refmt because it
       " slows down refmts to *valid* installs. This way, we'll only pay the
       " which refmt delay to check the path when there was some error.
-      call esy#Exec('which ' . s:formatprg)
-      if v:shell_error
-        let res = reason#VimReasonShortMsg("ReasonPrettyPrint: refmt not found. Open a .re file in a built esy project or install refmt globally.")
-        return 0
+      " TODO: This needs to use esy#PlatformLocateBinary.
+      " TODO: This is too slow on Windows. Even to do only once.
+      if !b:reason_did_check_refmt_exists
+        let b:reason_did_check_refmt_exists = 1
+        let pathTo = esy#PlatformLocateBinaryCached(s:formatprg)
+        if pathTo == -1
+          let res = reason#VimReasonShortMsg("ReasonPrettyPrint: refmt not found. Open a .re file in a built esy project or install refmt globally.")
+          return 0
+        endif
       endif
       let res = reason#VimReasonShortMsg(originalOut)
       return 0
     else
       let numModifications = 0
-      let outLines = split(out, '\n')
+      let outLines = out['stdout']
       let i = 0
       while i < len(outLines)
         if i < len(inLines)
