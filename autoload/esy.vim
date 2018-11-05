@@ -405,13 +405,18 @@ function! esy#ProjectExecForProjectRoot(projectRoot, cmd, mandateEsy, input)
 endfunction
 
 " Built in esy commands such as esy ls-builds
+function! esy#__FilterTermCodes(str)
+  return substitute(a:str, "[[0-9]*m", "", "g")
+endfunction
+
+" Built in esy commands such as esy ls-builds
 function! esy#ProjectCommandForProjectRoot(projectRoot, cmd)
   if a:projectRoot == []
     return "You are not in an esy project. Open a file in an esy project, or cd to one."
   else
     let res = xolox#misc#os#exec({'command': 'esy ' . a:cmd, 'check': 0})
     if res['exit_code'] == 0
-      return join(res['stdout'], "\n")
+      return esy#__FilterTermCodes(join(res['stdout'], "\n"))
     else
       let g:esy_last_failed_stderr = join(res['stderr'], "\n")
     let g:esy_last_failed_cmd = join(res['command'], "\n")
