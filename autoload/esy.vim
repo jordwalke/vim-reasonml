@@ -419,7 +419,15 @@ function! esy#ProjectCommandForProjectRoot(projectRoot, cmd)
       return esy#__FilterTermCodes(join(res['stdout'], "\n"))
     else
       let g:esy_last_failed_stderr = join(res['stderr'], "\n")
-    let g:esy_last_failed_cmd = join(res['command'], "\n")
+      if has_key(res, 'command') && type(res) == v:t_list
+        let g:esy_last_failed_cmd = join(res['command'], "\n")
+      else
+        if has_key(res, 'command') && type(res) == v:t_string
+          let g:esy_last_failed_cmd = res['command']
+        else
+          let g:esy_last_failed_cmd = 'not-recorded'
+        endif
+      endif
       return "Command failed: " . a:cmd . " - Troubleshoot :echo g:esy_last_failed_stderr"
     endif
   endif
