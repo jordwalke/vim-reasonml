@@ -54,17 +54,17 @@ function! refmt#Refmt(...)
       " path. We didn't want to do this before trying to refmt because it
       " slows down refmts to *valid* installs. This way, we'll only pay the
       " which refmt delay to check the path when there was some error.
-      " TODO: This needs to use esy#PlatformLocateBinary.
+      " TODO: This needs to use esy#EsyLocateBinaryCached.
       " TODO: This is too slow on Windows. Even to do only once.
       if !b:reason_did_check_refmt_exists
         let b:reason_did_check_refmt_exists = 1
-        let pathTo = esy#PlatformLocateBinaryCached(s:formatprg)
+        let pathTo = esy#EsyLocateBinaryCached(s:formatprg)
         if pathTo == -1
-          let res = reason#VimReasonShortMsg("ReasonPrettyPrint: refmt not found. Open a .re file in a built esy project or install refmt globally.")
+          let res = console#Error("ReasonPrettyPrint: refmt not found. Open a .re file in a built esy project or install refmt globally.")
           return 0
         endif
       endif
-      let res = reason#VimReasonShortMsg(originalOut)
+      let res = console#Error(originalOut)
       return 0
     else
       let numModifications = 0
@@ -94,7 +94,7 @@ function! refmt#Refmt(...)
         let i = i - 1
       endwhile
       if numModifications == 0
-        let res = reason#VimReasonShortMsg("Refmt: Already Formatted")
+        let res = console#Info("Refmt: Already Formatted")
       endif
       return 1
     endif

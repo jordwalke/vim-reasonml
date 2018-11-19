@@ -49,7 +49,9 @@ endif
 
 
 let g:vimreason_did_ensure_shell_plugins=0
-let g:vimreason_ocamlmerlin_path=''
+if !exists('g:vimreason_ocamlmerlin_path')
+  let g:vimreason_ocamlmerlin_path=''
+endif
 
 " From auto-format plugin:
 " https://github.com/Chiel92/vim-autoformat/blob/master/plugin/autoformat.vim
@@ -181,7 +183,7 @@ function! ReasonMaybeUseThisMerlinForAllProjects(thisProjectsMerlinPath)
       execute "set rtp+=".ocamlmerlinRtp
     else
       if thisProjectsMerlinPath != g:vimreason_ocamlmerlin_path
-        let res = reason#VimReasonShortMsg("Warning: Starting merlin for new project, using a previously loaded merlin which differs. This might cause issues. See g:vimreason_ocamlmerlin_path and b:thisProjectsMerlinPath")
+        let res = console#Info("Starting merlin for new project, using a previously loaded merlin which differs. This might cause issues. See g:vimreason_ocamlmerlin_path and b:thisProjectsMerlinPath")
       endif
     endif
   endif
@@ -192,9 +194,29 @@ endfunction
 " different from the one used to load plugin code.
 function! MerlinSelectBinary()
   let projectRoot = esy#FetchProjectRoot()
-  let env = esy#ProjectEnv(projectRoot)
   if !empty(projectRoot)
-    let b:merlin_env = env
+    let env = esy#ProjectEnv(projectRoot)
+    " For some reason that env is too large on Windows.
+    " Copy over only the subset.
+    let env = {
+          \ 'CAML_LD_LIBRARY_PATH': has_key(env, 'CAML_LD_LIBRARY_PATH') ? env['CAML_LD_LIBRARY_PATH'] : '',
+          \ 'HOMEPATH': has_key(env, 'HOMEPATH') ? env['HOMEPATH'] : '',
+          \ 'OCAMLFIND_COMMANDS': has_key(env,'OCAMLFIND_COMMANDS') ? env['OCAMLFIND_COMMANDS'] : '',
+          \ 'OCAMLFIND_DESTDIR': has_key(env, 'OCAMLFIND_DESTDIR') ? env['OCAMLFIND_DESTDIR'] : '',
+          \ 'OCAMLFIND_LDCONF': has_key(env, 'OCAMLFIND_LDCONF') ? env['OCAMLFIND_LDCONF'] : '',
+          \ 'OCAMLLIB': has_key(env, 'OCAMLLIB') ? env['OCAMLLIB'] : '',
+          \ 'OCAMLPATH': has_key(env, 'OCAMLPATH') ? env['OCAMLPATH'] : '',
+          \ 'OCAML_TOPLEVEL_PATH': has_key(env, 'OCAML_TOPLEVEL_PATH') ? env['OCAML_TOPLEVEL_PATH'] : '',
+          \ 'PATH': has_key(env, 'PATH') ? env['PATH'] : ''
+          \ }
+    " The empty object if no env
+    if !empty(env)
+      let b:merlin_env = env
+    else
+      call console#Error("Could not load environment for merlin from " . projectRoot[0])
+    endif
+  else
+     call console#Warn('empty project root - this probably should not happen.')
   endif
   return g:vimreason_ocamlmerlin_path
 endfunction

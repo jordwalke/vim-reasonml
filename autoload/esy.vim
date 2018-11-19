@@ -3,15 +3,14 @@ function! s:trim(txt)
   return substitute(a:txt, '^\n*\s*\(.\{-}\)\n*\s*$', '\1', '')
 endfunction
 let g:esy_last_failed_stderr = ""
+let g:esy_last_failed_stdout = ""
 let g:esy_last_failed_cmd = ""
-let g:esy_last_cmd_prefix = ""
 
-" Will log the stderr to g:esy_last_failed_stderr for debugging/inspecting.
-function! s:resultStdoutOr(res, orThis)
-  if a:res['exit_code'] == 0
-    return join(a:res['stdout'], "\n")
+function! esy#trunc(s, len)
+  if len(a:s) < a:len || len(a:s) == a:len
+    return a:s
   else
-    return a:orThis
+    return strpart(a:s, 0, a:len-2) . '..'
   endif
 endfunction
 
@@ -219,15 +218,11 @@ function! esy#FetchProjectInfoForProjectRoot(projectRoot)
 endfunction
 
 " Only Use For Debugging!
-function! esy#FetchProjectInfo()
+function! esy#CmdFetchProjectInfo()
   return esy#FetchProjectInfoForProjectRoot(esy#FetchProjectRoot())
 endfunction
 
-" Cached Versions Of Fetching Calls:
-" ======================================================================
-" Cached Versions Which Can Be Used From StatusLines And Airlines.
-" ======================================================================
-function! esy#ProjectEnv(projectRoot)
+function! esy#ProjectEnvFromCommandEnv(projectRoot)
   if empty(a:projectRoot) || a:projectRoot == []
     return 0
   endif
@@ -258,6 +253,38 @@ function! esy#ProjectEnv(projectRoot)
     return varDict
   else
     return {}
+  endif
+endfunction
+
+function! esy#UpdateLastError(ret)
+  let g:esy_last_failed_stderr = join(a:ret['stderr'], "\n")
+  let g:esy_last_failed_stdout = join(a:ret['stdout'], "\n")
+  let g:esy_last_failed_cmd = a:ret['command']
+endfunction
+
+function! esy#ProjectEnvFromJson(projectRoot)
+  if empty(a:projectRoot) || a:projectRoot == [] || empty(g:vimreason_esy_discovered_path)
+    return {}
+  endif
+  let ret = xolox#misc#os#exec({'command': 'cd ' . a:projectRoot[0] . ' && esy command-env --json', 'check': 0})
+  if ret['exit_code'] != 0
+    call esy#UpdateLastError(ret)
+    return -1
+  else
+    " Relying on the fact that our JSON we output is largely valid vimscript!
+    let lines = join(ret['stdout'], " ")
+    let jsonParse = eval(lines)
+    return jsonParse
+  endif
+endfunction
+
+function! esy#ProjectEnv(projectRoot)
+  let g:envJson = esy#ProjectEnvFromJson(a:projectRoot)
+  let g:env = esy#ProjectEnvFromCommandEnv(a:projectRoot)
+  if g:esy_environment_mode == 'json'
+    return esy#ProjectEnvFromJson(a:projectRoot)
+  else
+    return esy#ProjectEnvFromCommandEnv(a:projectRoot)
   endif
 endfunction
 
@@ -320,9 +347,10 @@ function! esy#FetchProjectInfoForProjectRootCached(projectRoot)
   endif
 endfunction
 
-function! esy#Reset()
+function! esy#CmdResetEditorCache()
   let g:esyProjectRootCacheByBuffer={}
   let g:esyProjectInfoCacheByProjectRoot={}
+  return "Reset editor cache"
 endfunction
 
 " If the path was gotten from `which` from a mingw system, map it back to a
@@ -369,37 +397,28 @@ endfunction
 
 
 function! esy#ProjectExecForProjectRoot(projectRoot, cmd, mandateEsy, input)
-  if a:projectRoot == []
+  if a:projectRoot == [] || empty(g:vimreason_esy_discovered_path)
     if a:mandateEsy
-      throw "called esy#ProjectExecForProjectRoot on a non-esy project"
+      let msg = (a:projectRoot == []) ? 'Attempting to invoke Esy project command on non esy project. ' : ''
+      let msg = msg . (empty(g:vimreason_esy_discovered_path) ? 'esy does not appear to be installed on your system. It is not on your global PATH perhaps' : '')
+      call console#Error(msg)
+      return -1
     else
       " Check:0 means it won't throw on non-zero return code.
       let ret = xolox#misc#os#exec({'command': a:cmd, 'input': a:input, 'check': 0})
     endif
   else
-    " let l:commandEnv='C:/Users/jwalke/Desktop/command-env.bat'
-    let l:commandEnv=a:projectRoot[0] . '/node_modules/.cache/_esy/build/bin/command-env'
-    let l:commandExec=a:projectRoot[0] . '/node_modules/.cache/_esy/build/bin/command-exec'
-    if a:mandateEsy && (esy#FetchProjectInfoForProjectRoot(a:projectRoot)[2] != 'built' || !filereadable(l:commandEnv))
+    if empty(g:vimreason_esy_discovered_path)
+      call console#Error("Running command " . a:cmd . " without an esy")
+    endif
+    if a:mandateEsy && (esy#FetchProjectInfoForProjectRoot(a:projectRoot)[2] != 'built' )
       throw "called esy#FetchProjectInfoForProjectRoot on a project not installed and built " . a:projectRoot[0]
     else
-      if s:is_win
-        let tmp = tempname() . ".bat"
-        let cmdPrefix = esy#ProjectRootCommandPrefix(a:projectRoot)
-        call extend(cmdPrefix, [a:cmd])
-        call writefile(cmdPrefix, tmp)
-        let g:esy_last_cmd_prefix = cmdPrefix
-        let ret = xolox#misc#os#exec({'command': tmp, 'stdin': a:input, 'check': 0})
-      else
-        " no need to create intermediate files for non-win
-        let g:esy_last_cmd_prefix = ''
-        let ret = xolox#misc#os#exec({'command': 'source ' . l:commandEnv . ' && ' . a:cmd, 'stdin': a:input, 'check': 0})
-      endif
+      let ret = xolox#misc#os#exec({'command': g:vimreason_esy_discovered_path . ' ' . a:cmd, 'stdin': a:input, 'check': 0})
     endif
   endif
   if ret['exit_code'] != 0
-    let g:esy_last_failed_stderr = join(ret['stderr'], "\n")
-    let g:esy_last_failed_cmd = ret['command']
+    call esy#UpdateLastError(ret)
   endif
   return ret
 endfunction
@@ -413,41 +432,26 @@ endfunction
 function! esy#ProjectCommandForProjectRoot(projectRoot, cmd)
   if a:projectRoot == []
     return "You are not in an esy project. Open a file in an esy project, or cd to one."
-  else
-    let res = xolox#misc#os#exec({'command': 'esy ' . a:cmd, 'check': 0})
-    if res['exit_code'] == 0
-      return esy#__FilterTermCodes(join(res['stdout'], "\n"))
-    else
-      let g:esy_last_failed_stderr = join(res['stderr'], "\n")
-      if has_key(res, 'command') && type(res) == v:t_list
-        let g:esy_last_failed_cmd = join(res['command'], "\n")
-      else
-        if has_key(res, 'command') && type(res) == v:t_string
-          let g:esy_last_failed_cmd = res['command']
-        else
-          let g:esy_last_failed_cmd = 'not-recorded'
-        endif
-      endif
-      return "Command failed: " . a:cmd . " - Troubleshoot :echo g:esy_last_failed_stderr"
-    endif
   endif
-endfunction
-
-" Built in esy commands such as esy ls-builds
-function! esy#Libs()
-  let projectRoot = esy#FetchProjectRoot()
-  return esy#ProjectCommandForProjectRoot(projectRoot, "ls-libs")
-endfunction
-
-" Built in esy commands such as esy ls-builds
-function! esy#Builds()
-  let projectRoot = esy#FetchProjectRoot()
-  return esy#ProjectCommandForProjectRoot(projectRoot, "ls-builds")
-endfunction
-
-function! esy#Modules()
-  let projectRoot = esy#FetchProjectRoot()
-  return esy#ProjectCommandForProjectRoot(projectRoot, "ls-modules")
+  if empty(g:vimreason_esy_discovered_path)
+    return "esy doesn't appear to be installed on your system. It's not in your global PATH probably."
+  endif
+  let res = xolox#misc#os#exec({'command': 'esy ' . a:cmd, 'check': 0})
+  if res['exit_code'] == 0
+    return esy#__FilterTermCodes(join(res['stdout'], "\n"))
+  else
+    call esy#UpdateLastError(res)
+    if has_key(res, 'command') && type(res) == v:t_list
+      let g:esy_last_failed_cmd = join(res['command'], "\n")
+    else
+      if has_key(res, 'command') && type(res) == v:t_string
+        let g:esy_last_failed_cmd = res['command']
+      else
+        let g:esy_last_failed_cmd = 'not-recorded'
+      endif
+    endif
+    return "Command failed: " . a:cmd . " - Troubleshoot :EsyRecentError"
+  endif
 endfunction
 
 function! esy#EnvDictFor(projectRoot,file)
@@ -508,16 +512,27 @@ function! s:platformLocatorCommand(name)
 endfunction
 
 " Locates a binary by name, for the platform's default executable system (on
-" windows, that's cmd.exe and `where`')
+" windows, that's cmd.exe and `where`') within the current esy project if
+" possible.
 " This should probably be added to xolox's shell libary.
 " Returns -1 if missing because people would misuse a return value of zero.
-function! esy#PlatformLocateBinary(name)
+function! esy#LocateBinaryWithoutEsy(name)
+  let res = xolox#misc#os#exec({'command': s:platformLocatorCommand(a:name), 'check': 0})
+  return s:resultFirstLineOr(res, -1)
+endfunction
+
+" Locates a binary by name, for the platform's default executable system (on
+" windows, that's cmd.exe and `where`') within the current esy project if
+" possible.
+" This should probably be added to xolox's shell libary.
+" Returns -1 if missing because people would misuse a return value of zero.
+function! esy#EsyLocateBinary(name)
   let res = esy#Exec(s:platformLocatorCommand(a:name))
   return s:resultFirstLineOr(res, -1)
 endfunction
 
 " Loose form - doesn't require esy project.
-function! esy#PlatformLocateBinaryCached(name)
+function! esy#EsyLocateBinaryCached(name)
   let res = esy#ExecCached(s:platformLocatorCommand(a:name))
   return s:resultFirstLineOr(res, -1)
 endfunction
@@ -530,12 +545,6 @@ function! esy#ExecWithStdIn(cmd, input)
 endfunction
 
 
-" Should render dynamic help based on the current project
-" settings/config/state.
-function! esy#HelpMe()
-
-endfunction
-
 function! esy#GetCacheKeyCurrentBuffer()
   let l:isUnnamed=expand("%") == ''
   if l:isUnnamed
@@ -544,4 +553,51 @@ function! esy#GetCacheKeyCurrentBuffer()
   else
     return expand("%:p")
   endif
+endfunction
+
+" The commands exposed as :EsyCommandName args
+
+
+" Loose form - doesn't require esy project.  Problem is this doesn't use the
+" cache, whereas other commands will. Might be misleading.
+function! esy#CmdEsyExec(cmd)
+  let res = esy#Exec_(a:cmd, 0)
+  if res['exit_code'] == 0
+    call console#Info(join(res['stdout'], "\n"))
+  else
+    call console#Error(join(res['stderr'], "\n"))
+  endif
+endfunction
+
+function! esy#CmdEsyRecentError()
+  let str = [
+        \ "[stderr]: " . g:esy_last_failed_stderr,
+        \ "[stdout]: " . g:esy_last_failed_stdout,
+        \ "[command]: " . g:esy_last_failed_cmd
+        \ ]
+  echomsg join(str, " ")
+endfunction
+
+" Built in esy commands such as esy ls-builds
+function! esy#CmdEsyLibs()
+  let projectRoot = esy#FetchProjectRoot()
+  return esy#ProjectCommandForProjectRoot(projectRoot, "ls-libs")
+endfunction
+
+" Built in esy commands such as esy ls-builds
+function! esy#CmdBuilds()
+  let projectRoot = esy#FetchProjectRoot()
+  return esy#ProjectCommandForProjectRoot(projectRoot, "ls-builds")
+endfunction
+
+function! esy#CmdEsyModules()
+  let projectRoot = esy#FetchProjectRoot()
+  return esy#ProjectCommandForProjectRoot(projectRoot, "ls-modules")
+endfunction
+
+
+" Should render dynamic help based on the current project
+" settings/config/state.
+function! esy#CmdEsyHelp()
+  return "Run :help vim-reason for help using esy from within vim"
 endfunction

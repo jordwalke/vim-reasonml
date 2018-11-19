@@ -25,6 +25,13 @@ if projectRoot == []
   finish
 else
   let info = esy#FetchProjectInfoForProjectRoot(projectRoot)
+  " For every new buffer we can perform the check again if necessary.
+  if empty(g:vimreason_esy_discovered_path)
+    let res = esy#LocateBinaryWithoutEsy("esy")
+    if res != -1
+      let g:vimreason_esy_discovered_path = res
+    endif
+  endif
   if info == []
   else
     let status = esy#ProjectStatusOfProjectInfo(info)
@@ -34,8 +41,13 @@ else
       " Detect when an esy field is later added. We'll need to completely kill
       " merlin. We can only have one version of merlin loaded per Vim.
     else
+      if empty(g:vimreason_esy_discovered_path)
+        call console#Warning("esy is not installed in your global path. If this is a mistake, try setting g:vimreason_esy_path and reloading your editor")
+        let b:doing_ftplugin =0
+        finish
+      endif
       if status != 'built'
-        call reason#VimReasonShortMsg("Esy Status: " . status . ". IDE features will activate once esy project is installed, built. set ft=reason to refresh.")
+        call console#Info("Esy: " . status . ". IDE features will activate once esy project is installed, built. set ft=reason to refresh.")
         let b:doing_ftplugin =0
         finish
       endif
@@ -54,11 +66,16 @@ unlet s:save_cpo
 " The following two "if executable" checks are the primary original code for
 " this plugin. The majority of the remaining code is simply copied from
 " Vim-Plug in order to reuse Vim-Plug's lazy loading code.
-let b:thisProjectsMerlinPath = esy#PlatformLocateBinary("ocamlmerlin")
+
+
+let b:thisProjectsMerlinPath = esy#EsyLocateBinary("ocamlmerlin")
+
 " Calling into this function, actually ends up setting ft=reason so you get
 " caught in a loop which is why we have a b:doing_ftplugin variable). If
 " b:doing_ftplugin is 1, then it means we're in a "reentrant" ftplugin call
-" and we know to bail, letting the original call succeed.
+" and we know to bail, letting the original call succeed. Calling into here
+" will also end up calling plugin/reason.vim's `MerlinSelectBinary()` if
+" merlin was found at this project path and the merlin vim plugin was loaded.
 if b:thisProjectsMerlinPath != -1
   call ReasonMaybeUseThisMerlinForAllProjects(b:thisProjectsMerlinPath)
 endif
@@ -72,7 +89,7 @@ if !empty(g:vimreason_ocamlmerlin_path)
   let b:finished_activating_buffer_successfully = 1
 else
   " Do not set b:finished_activating_buffer_successfully. Could not find merlin.
-  let res = reason#VimReasonShortMsg("Could not find merlin support. Is it listed in your devDependencies?")
+  let res = console#Error("Could not find merlin support. Is it listed in your devDependencies?")
 endif
 
 let b:doing_ftplugin = 0

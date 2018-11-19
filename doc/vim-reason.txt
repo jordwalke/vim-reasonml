@@ -1,6 +1,6 @@
- vim:tw=78:sw=4:noet:ts=8:ft=help:norl:
+ vim:tw=79:sw=4:noet:ts=8:ft=help:norl:
 
-*reason.txt*  Lean and mean status/tabline that's light as air
+*vim-reason.txt*  The Reason Vim Plugin For The Reason Ecosystem.
 *reason* *vim-reason*
 
 	   _                                                    ~
@@ -9,8 +9,8 @@
      \ V /| | | | | | |_____| | |  __/ (_| \__ \ (_) | | | |    ~
       \_/ |_|_| |_| |_|     |_|  \___|\__,_|___/\___/|_| |_|    ~
 
-==============================================================================
-CONTENTS                                                      *reason* *ft-reason*
+================================================================================
+CONTENTS                                                     *reason* *ft-reason*
 
    01. Intro ................................................ |reason-intro|
    02. Configuration ...............................  |reason-configuration|
@@ -18,110 +18,198 @@ CONTENTS                                                      *reason* *ft-reaso
    06. License ............................................ |reason-license|
 
 
-==============================================================================
-INTRODUCTION                                                      *reason-intro*
+================================================================================
+INTRODUCTION                                                       *reason-intro*
 
 Plugin for developing Reason proejcts with Reason syntax and Merlin.
 
-You must have Merlin installed either as a global program, or as a
-`devDependency` of an [`esy`](https://github.com/esy/esy) project.
+You must have Merlin installed either as a `devDependency` of an
+[`esy`](https://github.com/esy/esy) project.
 
-Recommended Config:
+Recommended Config: >
+  " Airline
+  let g:vimreason_project_airline=1
+  let g:vimreason_syntastic_airline=1
+  let g:vimreason_clean_project_airline=1
+  let g:airline#extensions#whitespace#enabled = 0
+  let g:airline_powerline_fonts = 1
+  let g:airline_skip_empty_sections = 1
+<
 
-
-    " Airline
-    let g:vimreason_project_airline=1
-    let g:vimreason_syntastic_airline=1
-    let g:vimreason_clean_project_airline=1
-    let g:airline#extensions#whitespace#enabled = 0
-    let g:airline_powerline_fonts = 1
-    let g:airline_skip_empty_sections = 1
-
-==============================================================================
-CONFIGURATION                                             *reason-configuration*
+================================================================================
+CONFIGURATION                                              *reason-configuration*
 
 The following values may be set in your vim configuration. The values shown
 here are their defaults.
 
+
+                                                 *vimreason_precise_parse_errors*
 * Whether or not to return more accurate syntax error locations along with
   merlin errors. This is not recommended if you have error highlighting while
   typing, due to performance. If you only show/update merlin errors upon save,
-  then this should remain enabled.
+  then this should remain enabled. >
 
   let g:vimreason_precise_parse_errors=1
+<
 
-* Customize arguments passed to `refmt` when running `:ReasonPrettyPrint`
+
+                                             *g:vimreason_extra_args_expr_reason*
+* Customize arguments passed to `refmt` when running `:ReasonPrettyPrint` >
 
   let g:vimreason_extra_args_expr_reason=''
+<
 
-* Customize `refmt` location when running `:ReasonPrettyPrint`
-  Defaults to `"refmt"`
+
+                                                               *vimreason_reason*
+* Customize `refmt` location when running `:ReasonPrettyPrint` Defaults to
+  'refmt' >
 
   let g:vimreason_reason='/My/Path/to/refmt'
+<
 
-* Whether or not to show esy project status in vim-airline.
+
+* Whether or not to show esy project status in vim-airline. >
 
   let g:vimreason_project_airline=1
+<
+  [NOTE] This overrides airline's built in syntastic integration with
+  something much more streamlined.  Recommended with the following airline
+  config in your vimrc.
 
-  NOTE: This overrides airline's built in syntastic integration with something
-  much more streamlined.
-  Recommended with the following airline config in your vimrc.
 
+
+                                              *g:vimreason_clean_project_airline*
 * Whether or not to clean up the airline line numbers and file info sections.
   This has nothing to do with reason/esy but it offers a nicer and cleaner
   statusline that shows line/characters in a more readable manner, and avoids
   creating "jumpy" status lines when your cursor moves. Pairs well with
   g:vimreason_project_airline=1 (only activated when
-  g:vimreason_project_airline=1).
+  g:vimreason_project_airline=1). >
 
   let g:vimreason_clean_project_airline=1
+<
 
 
+                                                  *g:vimreason_syntastic_airline*
 * Whether or not to override the airline warning/error sections with
-  a custom error/warning display.
+  a custom error/warning display. >
 
   let g:vimreason_syntastic_airline=1
+<
 
-
+                                                       *vimreason_linter_symbols*
 * Symbols to use in airline when `vimreason_syntastic_airline` is set to `1`.
   `vim-reason` respects `VimBox` settings for GUI elements, but you can define
-  these even without using `VimBox`.
+  these even without using `VimBox`. >
 
   let g:vimBoxLinterErrorSymbol="⮿"
   let g:vimBoxLinterWarningSymbol="⮿"
   let g:vimBoxLinterOkSymbol="☻"
+<
 
 
+                                                   *g:vimreason_ocamlmerlin_path*
 * Location of ocamlmerlin binary. You can force this to a custom location for
   testing. Make sure it is set before plugins load. In general, you never set
-  this because we find the optimal location based on the first file you edit.
+  this because we find the optimal location based on the first file you edit. >
 
   let g:vimreason_ocamlmerlin_path=''
+<
 
-==============================================================================
-COMMANDS                                                       *reason-commands*
+                                                           *g:vimreason_esy_path*
+* The path to where esy is located. If set to '' (the default), it will be
+  assumed that the `esy` binary is in your global `PATH`.
 
-:ReasonPrettyPrint                                           *:ReasonPrettyPrint*
-  Pretty print the Reason code.
+  let g:vimreason_esy_path=''
+<
 
-:EsyFetchProjectInfo                                       *:EsyFetchProjectInfo*
-  Queries the project for the current buffer.
-  Returns an empty [] if the current file/buffer has no associated esy
-  project.
 
-:EsyReset                                                             *:EsyReset*
-  Resets the esy project cache in Vim.
 
-:EsyExec                                                               *:EsyExec*
-  Allows executing script commands in the context of an esy project if your
+================================================================================
+ COMMANDS                                                       *reason-commands*
+
+
+                                                             *:ReasonPrettyPrint*
+* Pretty prints your Reason code >
+
+  :ReasonPrettyPrint
+<
+
+
+                                                           *:EsyFetchProjectInfo*
+* Queries the project for the current buffer.  Returns an empty [] if the
+  current file/buffer has no associated esy project. >
+
+  :EsyFetchProjectInfo
+<
+
+                                                                      *:EsyReset*
+* Resets the esy project cache in Vim. >
+
+  :EsyReset
+<
+
+                                                                       *:EsyExec*
+* Allows executing script commands in the context of an esy project if your
   current buffer exists in a built esy project. It will fall back to global
   environment if you are not in a built esy project, or if you are in a buffer
-  with no name/location.
+  with no name/location. >
 
+  :EsyReset
+<
 
-==============================================================================
-LICENSE                                                     *vim-reason-license*
+                                                                       *:Console*
+* Shows a filtered :messages with highlighting of errors/warnings/info.  This
+  is useful because `vim-reason` truncates messages so as not be obtrusive. To
+  dig deeper into various those error messages, run: >
 
-MIT License.  Copyright © 2013-2017 Bailey Ling, Christian Brabandt
+  :Console
+<
 
- vim:tw=78:ts=8:ft=help:norl:
+================================================================================
+INTEGRATIONS                                                *reason-integrations*
+
+`vim-reason` integrates with the following plugins/systems if they are
+available:
+
+* VimBox: vim-reason respects the symbols configured in your VimBox config (for
+  the alpha /json branch of VimBox)
+
+[TODO] Integrate with LSP/RLS if available.
+[TODO] Refactor the `esy` into a standalone vim plugin which is merely vendored
+here.
+
+================================================================================
+UNSPECIFIED                                                 *reason-unspecifieds*
+
+Right now, when you open a file with `vim-reason`, the correct esy project will
+be discovered, and the default `package.json`/`esy.json` will be respected.
+
+Currently `vim-reason` doesn't support multiple sandboxes (multiple
+package.json's at the project root). Eventually `vim-reason` should include a
+feature to select one of the multiple `.json` files to apply to the dev
+environment.
+
+`vim-reason` currently tracks the project root/env per file you open. It
+doesn't currently ensure that all requests to merlin are sent through each
+file's specific project environment. (That should be added / verified).
+
+Open question: When editing a file in a linked project, which environment
+should apply? It shouldn't always be the linked packages' dev environment,
+because then your resolutions from the top level project wouldn't apply.
+
+================================================================================
+VENDORINGS                                                 *reason-configuration*
+
+`vim-reason` includes some plugins to integrate well with your system.  You
+might have these plugins already installed for other reasons, but these
+particular plugins likely don't present many problems when duplicated.
+
+`xolox-misc/shell` This includes utilities for interacting with windows
+commands without popping up an obtrusive dialog (TODO: Replace this with
+something lighter weight).
+
+`vim-console` Is a utility from [VimBox](https://github.com/jordwalke/VimBox/)
+which gracefully shows error messages in the command output, without ever
+triggering the "Press Enter To Continue" prompt in vim. Use `:Console` to see a
+nice rendering of these truncated messages for further inspection.
