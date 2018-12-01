@@ -141,7 +141,7 @@ syn match   reasonCharacter   /b'\([^\\]\|\\\(.\|x\x\{2}\)\)'/ contains=reasonEs
 syn match   reasonCharacter   /'\([^\\]\|\\\(.\|x\x\{2}\|u\x\{4}\|U\x\{8}\|u{\x\{1,6}}\)\)'/ contains=reasonEscape,reasonEscapeUnicode,reasonEscapeError,reasonCharacterInvalid
 
 syn match reasonShebang /\%^#![^[].*/
-" syn region reasonCommentLine                                        start="//"                      end="$"   contains=reasonTodo,@Spell
+syn region reasonCommentLine                                        start="//"                      end="$"   contains=reasonTodo,@Spell
 " syn region reasonCommentLineDoc                                     start="//\%(//\@!\|!\)"         end="$"   contains=reasonTodo,@Spell
 syn region reasonCommentBlock    matchgroup=reasonCommentBlock        start="/\*\%(!\|\*[*/]\@!\)\@!" end="\*/" contains=reasonTodo,reasonCommentBlockNest,@Spell
 syn region reasonCommentBlockDoc matchgroup=reasonCommentBlockDoc     start="/\*\%(!\|\*[*/]\@!\)"    end="\*/" contains=reasonTodo,reasonCommentBlockDocNest,@Spell
@@ -205,7 +205,7 @@ hi def link reasonCapsIdent     reasonIdentifier
 hi def link reasonFunction      Function
 hi def link reasonFuncName      Function
 hi def link reasonShebang       Comment
-" hi def link reasonCommentLine   Comment
+hi def link reasonCommentLine   Comment
 " hi def link reasonCommentLineDoc Comment
 hi def link reasonCommentBlock  Comment
 hi def link reasonCommentBlockDoc Comment
