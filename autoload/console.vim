@@ -353,6 +353,10 @@ endfunction
 " Command form which evals its arguments as a string and gracefully fails,
 " printing a nice error message instead of an obtrusive Press-Enter box.
 function! console#InfoCmd(msg)
+  if empty(a:msg)
+    call console#ErrorCmd("'Supply expression'")
+    return
+  endif
   let errorEvaling = 0
   try
     let result = eval(a:msg)
@@ -370,6 +374,10 @@ endfunction
 
 
 function! console#SuccessCmd(msg)
+  if empty(a:msg)
+    call console#ErrorCmd("'Supply expression'")
+    return
+  endif
   let errorEvaling = 0
   try
     let result = eval(a:msg)
@@ -386,6 +394,10 @@ function! console#SuccessCmd(msg)
 endfunction
 
 function! console#WarnCmd(msg)
+  if empty(a:msg)
+    call console#ErrorCmd("'Supply expression'")
+    return
+  endif
   let errorEvaling = 0
   try
     let result = eval(a:msg)
@@ -402,6 +414,10 @@ function! console#WarnCmd(msg)
 endfunction
 
 function! console#ErrorCmd(msg)
+  if empty(a:msg)
+    call console#ErrorCmd("'Supply expression'")
+    return
+  endif
   let errorEvaling = 0
   try
     let result = eval(a:msg)
