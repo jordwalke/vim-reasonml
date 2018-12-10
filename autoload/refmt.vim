@@ -95,6 +95,8 @@ function! refmt#Refmt(...)
       endwhile
       if numModifications == 0
         let res = console#Info("Refmt: Already Formatted")
+      else
+        let res = console#Info("Formatted")
       endif
       return 1
     endif
