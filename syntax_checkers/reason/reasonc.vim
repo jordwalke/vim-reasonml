@@ -49,17 +49,17 @@ function! SyntaxCheckers_reason_merlin_GetLocList()
         return merlinErrList
       else
         let bufnr = bufnr('%')
-        let totalCommand = g:vimreason_reason." ".eval(g:vimreason_args_expr_reason)
         let inLines = getline(1,'$')
-        let buffContents = join(inLines, "\n")
-        let out = esy#ExecWithStdIn(totalCommand, buffContents)
-        if v:shell_error
-          let matchedSyntaxError = matchlist(out, 'File "[^\\"]*", line \([0-9]\+\), characters \([0-9]\+\)')
-          if empty(matchedSyntaxError)
+        let ext = match(expand("%"), "\\.rei$") == -1 ? ".re" : ".rei"
+        let out = refmt#callRefmtProgram(inLines, ext)
+        if out['exit_code'] != 0
+          let stderr = join(out['stderr'], "   ")
+          let compilerSyntaxError = refmt#extractCompilerSyntaxErr(stderr)
+          if empty(compilerSyntaxError)
             return merlinErrList
           else
-            let line = matchedSyntaxError[1]
-            let col = matchedSyntaxError[2] + 1
+            let line = compilerSyntaxError['line']
+            let col = compilerSyntaxError['col']
             if appearsToHaveSyntaxErr['lnum'] == line && appearsToHaveSyntaxErr['col'] == col
               " Okay, this is just the same syntax error. No use returning it
               " again, the original one likely has a better error message
