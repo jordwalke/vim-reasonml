@@ -350,6 +350,7 @@ endfunction
 function! esy#CmdResetEditorCache()
   let g:esyProjectRootCacheByBuffer={}
   let g:esyProjectInfoCacheByProjectRoot={}
+  let g:esyLocatedBinaryByProjectRootDir={}
   return "Reset editor cache"
 endfunction
 
@@ -396,6 +397,8 @@ function! esy#ProjectRootCommandPrefix(projectRoot)
 endfunction
 
 
+" Best effort attempt to use esy project. `a:mandateEsy=1` causes it to fail
+" if it can't use the esy project.
 function! esy#ProjectExecForProjectRoot(projectRoot, cmd, mandateEsy, input)
   if a:projectRoot == [] || empty(g:vimreason_esy_discovered_path)
     if a:mandateEsy
@@ -414,7 +417,8 @@ function! esy#ProjectExecForProjectRoot(projectRoot, cmd, mandateEsy, input)
     if a:mandateEsy && (esy#FetchProjectInfoForProjectRoot(a:projectRoot)[2] != 'built' )
       throw "called esy#FetchProjectInfoForProjectRoot on a project not installed and built " . a:projectRoot[0]
     else
-      let ret = xolox#misc#os#exec({'command': g:vimreason_esy_discovered_path . ' ' . a:cmd, 'stdin': a:input, 'check': 0})
+      let osChangeDir = s:is_win ? ('CD /D ' . a:projectRoot[0] . ' &') : ('cd ' . a:projectRoot[0] . ' &&')
+      let ret = xolox#misc#os#exec({'command': osChangeDir.' '.g:vimreason_esy_discovered_path.' '.a:cmd, 'stdin': a:input, 'check': 0})
     endif
   endif
   if ret['exit_code'] != 0
@@ -532,16 +536,37 @@ function! esy#EsyLocateBinary(name)
 endfunction
 
 " Loose form - doesn't require esy project.
-function! esy#EsyLocateBinaryCached(name)
-  let res = esy#ExecCached(s:platformLocatorCommand(a:name))
-  return s:resultFirstLineOr(res, -1)
+" Not only uses ExecCached to cache the project root/project info, but also
+" stores the cached located binary by project root dir.  One problem is that
+" if it was in the global environment, it will be picked up when queried from
+" an unbuilt project, then once the project is built, it isn't refetched.
+" Something should reset all caches when a project transitions from unbuilt to
+" built.
+function! esy#EsyLocateBinarySuperCached(name)
+  let projectRoot = esy#FetchProjectRootCached()
+  if [] != projectRoot && has_key(g:esyLocatedBinaryByProjectRootDir, projectRoot[0])
+    return g:esyLocatedBinaryByProjectRootDir[projectRoot[0]]
+  else
+    let res = esy#ExecCached(s:platformLocatorCommand(a:name))
+    let ret = s:resultFirstLineOr(res, -1)
+    if ret != -1 && [] != projectRoot
+      let g:esyLocatedBinaryByProjectRootDir[projectRoot[0]] = ret
+    endif
+    return ret
+  endif
 endfunction
 
-"
-" Loose form - doesn't require esy project.
+" Loose form - doesn't require esy project, but will try if possible.
 function! esy#ExecWithStdIn(cmd, input)
   let projectRoot = esy#FetchProjectRoot()
   return esy#ProjectExecForProjectRoot(projectRoot, a:cmd, 0, a:input)
+endfunction
+
+" Raw exec.
+function! esy#ExecWithStdInDoNotUseProject(cmd, input)
+  " Check:0 means it won't throw on non-zero return code.
+  let ret = xolox#misc#os#exec({'command': a:cmd, 'input': a:input, 'check': 0})
+  return s:resultFirstLineOr(ret, -1)
 endfunction
 
 
