@@ -176,6 +176,7 @@ function! ReasonMaybeUseThisMerlinForAllProjects(thisProjectsMerlinPath)
       let ocamlmerlinRtp = __ReasonUtilsDirPath(ocamlmerlin)
       " syntastic. Enabled by default, no-op when syntastic isn't present
       let g:syntastic_ocaml_checkers=['merlin']
+      let g:syntastic_reason_checkers=['merlin']
       let g:plugs_reasonPluginLoader={}
       let g:plugs_reasonPluginLoader['merlin'] = {'dir': (ocamlmerlinRtp)}
       call call(function("ReasonPluginLoaderLoad"), keys(g:plugs_reasonPluginLoader))
