@@ -18,6 +18,8 @@ let g:esyLogCacheMisses=0
 "
 let g:esyProjectRootCacheByBuffer = { }
 let g:esyProjectInfoCacheByProjectRoot={}
+let g:esyLocatedBinaryByProjectRootDir={}
+
 
 let g:esyProjectManagerPluginLoaded=1
 
