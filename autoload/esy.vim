@@ -263,7 +263,7 @@ function! esy#UpdateLastError(ret)
 endfunction
 
 function! esy#ProjectEnvFromJson(projectRoot)
-  if empty(a:projectRoot) || a:projectRoot == [] || empty(g:vimreason_esy_discovered_path)
+  if empty(a:projectRoot) || a:projectRoot == [] || empty(g:reasonml_esy_discovered_path)
     return {}
   endif
   let ret = xolox#misc#os#exec({'command': 'cd ' . a:projectRoot[0] . ' && esy command-env --json', 'check': 0})
@@ -400,10 +400,10 @@ endfunction
 " Best effort attempt to use esy project. `a:mandateEsy=1` causes it to fail
 " if it can't use the esy project.
 function! esy#ProjectExecForProjectRoot(projectRoot, cmd, mandateEsy, input)
-  if a:projectRoot == [] || empty(g:vimreason_esy_discovered_path)
+  if a:projectRoot == [] || empty(g:reasonml_esy_discovered_path)
     if a:mandateEsy
       let msg = (a:projectRoot == []) ? 'Attempting to invoke Esy project command on non esy project. ' : ''
-      let msg = msg . (empty(g:vimreason_esy_discovered_path) ? 'esy does not appear to be installed on your system. It is not on your global PATH perhaps' : '')
+      let msg = msg . (empty(g:reasonml_esy_discovered_path) ? 'esy does not appear to be installed on your system. It is not on your global PATH perhaps' : '')
       call console#Error(msg)
       return -1
     else
@@ -411,14 +411,14 @@ function! esy#ProjectExecForProjectRoot(projectRoot, cmd, mandateEsy, input)
       let ret = xolox#misc#os#exec({'command': a:cmd, 'input': a:input, 'check': 0})
     endif
   else
-    if empty(g:vimreason_esy_discovered_path)
+    if empty(g:reasonml_esy_discovered_path)
       call console#Error("Running command " . a:cmd . " without an esy")
     endif
     if a:mandateEsy && (esy#FetchProjectInfoForProjectRoot(a:projectRoot)[2] != 'built' )
       throw "called esy#FetchProjectInfoForProjectRoot on a project not installed and built " . a:projectRoot[0]
     else
       let osChangeDir = s:is_win ? ('CD /D ' . a:projectRoot[0] . ' &') : ('cd ' . a:projectRoot[0] . ' &&')
-      let ret = xolox#misc#os#exec({'command': osChangeDir.' '.g:vimreason_esy_discovered_path.' '.a:cmd, 'stdin': a:input, 'check': 0})
+      let ret = xolox#misc#os#exec({'command': osChangeDir.' '.g:reasonml_esy_discovered_path.' '.a:cmd, 'stdin': a:input, 'check': 0})
     endif
   endif
   if ret['exit_code'] != 0
@@ -437,7 +437,7 @@ function! esy#ProjectCommandForProjectRoot(projectRoot, cmd)
   if a:projectRoot == []
     return "You are not in an esy project. Open a file in an esy project, or cd to one."
   endif
-  if empty(g:vimreason_esy_discovered_path)
+  if empty(g:reasonml_esy_discovered_path)
     return "esy doesn't appear to be installed on your system. It's not in your global PATH probably."
   endif
   let res = xolox#misc#os#exec({'command': 'esy ' . a:cmd, 'check': 0})

@@ -16,20 +16,20 @@ function! refmt#extractCompilerSyntaxErr(text)
 endfunction
 
 function! refmt#callRefmtProgram(inLines, ext)
-  let pathTo = esy#EsyLocateBinarySuperCached(g:vimreason_reason)
+  let pathTo = esy#EsyLocateBinarySuperCached(g:reasonml_reason)
   if pathTo == -1
     let res = console#Error("ReasonPrettyPrint: refmt not found. Open a .re file in a built esy project.")
     return {}
   endif
   let s:vimreason_args = ""
-  if exists("g:vimreason_args_expr_reason")
-    let s:vimreason_args = eval(g:vimreason_args_expr_reason)
-  elseif exists("g:vimreason_args_reason")
-    let s:vimreason_args =  g:vimreason_args_reason
+  if exists("g:reasonml_args_expr_reason")
+    let s:vimreason_args = eval(g:reasonml_args_expr_reason)
+  elseif exists("g:reasonml_args_reason")
+    let s:vimreason_args =  g:reasonml_args_reason
   endif
   let s:vimreason_extra_args = ""
-  if exists("g:vimreason_extra_args_expr_reason")
-    let s:vimreason_extra_args = eval(g:vimreason_extra_args_expr_reason)
+  if exists("g:reasonml_extra_args_expr_reason")
+    let s:vimreason_extra_args = eval(g:reasonml_extra_args_expr_reason)
   endif
   let tempin = tempname() . a:ext
   call writefile(a:inLines, tempin)

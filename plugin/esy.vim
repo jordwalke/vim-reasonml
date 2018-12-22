@@ -7,11 +7,11 @@ else
   endif
 endif
 
-if !exists('g:vimreason_esy_path')
-  let g:vimreason_esy_path=''
+if !exists('g:reasonml_esy_path')
+  let g:reasonml_esy_path=''
 endif
 " Where esy is found to be installed.
-let g:vimreason_esy_discovered_path=''
+let g:reasonml_esy_discovered_path=''
 
 
 let g:esyLogCacheMisses=0

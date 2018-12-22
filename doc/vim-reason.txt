@@ -28,9 +28,9 @@ You must have Merlin installed either as a `devDependency` of an
 
 Recommended Config: >
   " Airline
-  let g:vimreason_project_airline=1
-  let g:vimreason_syntastic_airline=1
-  let g:vimreason_clean_project_airline=1
+  let g:reasonml_project_airline=1
+  let g:reasonml_syntastic_airline=1
+  let g:reasonml_clean_project_airline=1
   let g:airline#extensions#whitespace#enabled = 0
   let g:airline_powerline_fonts = 1
   let g:airline_skip_empty_sections = 1
@@ -49,14 +49,14 @@ here are their defaults.
   typing, due to performance. If you only show/update merlin errors upon save,
   then this should remain enabled. >
 
-  let g:vimreason_precise_parse_errors=1
+  let g:reasonml_precise_parse_errors=1
 <
 
 
-                                             *g:vimreason_extra_args_expr_reason*
+                                             *g:reasonml_extra_args_expr_reason*
 * Customize arguments passed to `refmt` when running `:ReasonPrettyPrint` >
 
-  let g:vimreason_extra_args_expr_reason=''
+  let g:reasonml_extra_args_expr_reason=''
 <
 
 
@@ -64,13 +64,13 @@ here are their defaults.
 * Customize `refmt` location when running `:ReasonPrettyPrint` Defaults to
   'refmt' >
 
-  let g:vimreason_reason='/My/Path/to/refmt'
+  let g:reasonml_reason='/My/Path/to/refmt'
 <
 
 
 * Whether or not to show esy project status in vim-airline. >
 
-  let g:vimreason_project_airline=1
+  let g:reasonml_project_airline=1
 <
   [NOTE] This overrides airline's built in syntastic integration with
   something much more streamlined.  Recommended with the following airline
@@ -78,23 +78,23 @@ here are their defaults.
 
 
 
-                                              *g:vimreason_clean_project_airline*
+                                              *g:reasonml_clean_project_airline*
 * Whether or not to clean up the airline line numbers and file info sections.
   This has nothing to do with reason/esy but it offers a nicer and cleaner
   statusline that shows line/characters in a more readable manner, and avoids
   creating "jumpy" status lines when your cursor moves. Pairs well with
-  g:vimreason_project_airline=1 (only activated when
-  g:vimreason_project_airline=1). >
+  g:reasonml_project_airline=1 (only activated when
+  g:reasonml_project_airline=1). >
 
-  let g:vimreason_clean_project_airline=1
+  let g:reasonml_clean_project_airline=1
 <
 
 
-                                                  *g:vimreason_syntastic_airline*
+                                                  *g:reasonml_syntastic_airline*
 * Whether or not to override the airline warning/error sections with
   a custom error/warning display. >
 
-  let g:vimreason_syntastic_airline=1
+  let g:reasonml_syntastic_airline=1
 <
 
                                                        *vimreason_linter_symbols*
@@ -108,19 +108,19 @@ here are their defaults.
 <
 
 
-                                                   *g:vimreason_ocamlmerlin_path*
+                                                   *g:reasonml_ocamlmerlin_path*
 * Location of ocamlmerlin binary. You can force this to a custom location for
   testing. Make sure it is set before plugins load. In general, you never set
   this because we find the optimal location based on the first file you edit. >
 
-  let g:vimreason_ocamlmerlin_path=''
+  let g:reasonml_ocamlmerlin_path=''
 <
 
-                                                           *g:vimreason_esy_path*
+                                                           *g:reasonml_esy_path*
 * The path to where esy is located. If set to '' (the default), it will be
   assumed that the `esy` binary is in your global `PATH`.
 
-  let g:vimreason_esy_path=''
+  let g:reasonml_esy_path=''
 <
 
 

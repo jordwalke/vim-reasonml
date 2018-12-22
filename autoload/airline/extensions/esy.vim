@@ -36,7 +36,7 @@ endfunction
 " First we define an init function that will be invoked from extensions.vim
 function! airline#extensions#esy#init(ext)
 
-  let doProjectAirline = exists('g:vimreason_project_airline') && g:vimreason_project_airline==1
+  let doProjectAirline = exists('g:reasonml_project_airline') && g:reasonml_project_airline==1
 
   if doProjectAirline
     call airline#parts#define_function('projectStatus', 'airline#extensions#esy#GetEsyProjectStatus')
@@ -53,12 +53,12 @@ endfunction
 
 " This function will be invoked just prior to the statusline getting modified.
 function! airline#extensions#esy#apply(...)
-  let doProjectAirline = exists('g:vimreason_project_airline') && g:vimreason_project_airline==1
+  let doProjectAirline = exists('g:reasonml_project_airline') && g:reasonml_project_airline==1
   " I have no idea why, but this is what the example.vim has for airline.
   " Appending to a w: variable.
   if doProjectAirline
     let w:airline_section_z = get(w:, 'airline_section_z', g:airline_section_z)
-    if g:vimreason_clean_project_airline==1
+    if g:reasonml_clean_project_airline==1
       let w:airline_section_z=airline#section#create(['projectStatus', '%3p%%'. g:airline_symbols.space, 'linenr',  ':%3v'])
     else
       let w:airline_section_z=airline#section#create(['projectStatus']) . w:airline_section_z

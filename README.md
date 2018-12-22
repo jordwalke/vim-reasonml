@@ -1,7 +1,7 @@
-vim-reason:
+vim-reasonml:
 =========================================
 
-**vim-reason: Vim plugin for developing Reason native projects with `esy`**
+**vim-reasonml: Native development with `esy` and Merlin**
 
 <img width="648px" height="432px" src="./doc/screenshot.png" />
 
@@ -54,6 +54,13 @@ let g:mucomplete#chains = {'default': ['omni']}
 ## Neomake
 [Neomake](https://github.com/neomake/neomake) support can be enabled by setting
 `let g:neomake_reason_enabled_makers = ['merlin']`.
+
+## Changes:
+
+**12/21/2018**
+- Now all config settings are prefixed with `g:reasonml_` instead of
+  `g:vimreason_`.
+
 
 
 ## LICENSE

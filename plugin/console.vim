@@ -1,5 +1,5 @@
 " In case people don't like installing a new top level command.
-if exists('g:vimreason_noConsoleCommands') && g:vimreason_noConsoleCommands
+if exists('g:reasonml_noConsoleCommands') && g:reasonml_noConsoleCommands
   " Fine then be that way.
 else
   " Opens the console

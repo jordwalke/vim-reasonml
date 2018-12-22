@@ -30,7 +30,7 @@ endfunction
 
 function! SyntaxCheckers_reason_merlin_GetLocList()
   let merlinErrList = merlin#ErrorLocList()
-  if empty(merlinErrList) || !g:vimreason_precise_parse_errors
+  if empty(merlinErrList) || !g:reasonml_precise_parse_errors
     return merlinErrList
   else
     " try

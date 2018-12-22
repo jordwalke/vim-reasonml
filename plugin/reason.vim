@@ -19,20 +19,20 @@ let s:vimReasonPluginRoot = fnamemodify(fnamemodify(s:currentFilePath, ':h'), ':
 
 " User Customizable Config Variables:
 
-if !exists('g:vimreason_precise_parse_errors')
-  let g:vimreason_precise_parse_errors=1
+if !exists('g:reasonml_precise_parse_errors')
+  let g:reasonml_precise_parse_errors=1
 endif
-if !exists('g:vimreason_extra_args_expr_reason')
-  let g:vimreason_extra_args_expr_reason='""'
+if !exists('g:reasonml_extra_args_expr_reason')
+  let g:reasonml_extra_args_expr_reason='""'
 endif
-if !exists('g:vimreason_project_airline')
-  let g:vimreason_project_airline=1
+if !exists('g:reasonml_project_airline')
+  let g:reasonml_project_airline=1
 endif
-if !exists('g:vimreason_clean_project_airline')
-  let g:vimreason_clean_project_airline=0
+if !exists('g:reasonml_clean_project_airline')
+  let g:reasonml_clean_project_airline=0
 endif
-if !exists('g:vimreason_syntastic_airline')
-  let g:vimreason_syntastic_airline=1
+if !exists('g:reasonml_syntastic_airline')
+  let g:reasonml_syntastic_airline=1
 endif
 
 
@@ -48,18 +48,18 @@ if !exists('g:vimBoxLinterOkSymbol')
 endif
 
 
-let g:vimreason_did_ensure_shell_plugins=0
-if !exists('g:vimreason_ocamlmerlin_path')
-  let g:vimreason_ocamlmerlin_path=''
+let g:reasonml_did_ensure_shell_plugins=0
+if !exists('g:reasonml_ocamlmerlin_path')
+  let g:reasonml_ocamlmerlin_path=''
 endif
 
 " From auto-format plugin:
 " https://github.com/Chiel92/vim-autoformat/blob/master/plugin/autoformat.vim
 
-if !exists('g:vimreason_reason')
-  let g:vimreason_reason = "refmt"
+if !exists('g:reasonml_reason')
+  let g:reasonml_reason = "refmt"
 endif
-let g:vimreason_args_expr_reason = '"--print re " .  (match(expand("%"), "\\.rei$") == -1 ? "--interface false " : "--interface true ")'
+let g:reasonml_args_expr_reason = '"--print re " .  (match(expand("%"), "\\.rei$") == -1 ? "--interface false " : "--interface true ")'
 
 let s:save_cpo = &cpo
 set cpo&vim
@@ -108,10 +108,10 @@ endif
 " " colide.
 " function! ReasonEnsureShellPlugins()
 "   echomsg "TRYING TO ENSURE "
-"   if g:vimreason_did_ensure_shell_plugins
+"   if g:reasonml_did_ensure_shell_plugins
 "     return
 "   endif
-"   let g:vimreason_did_ensure_shell_plugins=1
+"   let g:reasonml_did_ensure_shell_plugins=1
 "   " Setup Shell Utilities:
 "   " If they don't already have good shell integration installed, load the plugin
 "   " dynamically.
@@ -163,16 +163,16 @@ endfunction
 function! ReasonMaybeUseThisMerlinForAllProjects(thisProjectsMerlinPath)
   if !empty(a:thisProjectsMerlinPath)
     let thisProjectsMerlinPath = resolve(__ReasonUtilsTrimStr(a:thisProjectsMerlinPath))
-    if empty(g:vimreason_ocamlmerlin_path)
+    if empty(g:reasonml_ocamlmerlin_path)
       " Set the global merlin to this project's merlin.
-      let g:vimreason_ocamlmerlin_path = thisProjectsMerlinPath
+      let g:reasonml_ocamlmerlin_path = thisProjectsMerlinPath
       " If installed through an esy sandboxed npm release prebuilt binaries find
       " the real location.
-      if g:vimreason_ocamlmerlin_path =~ "reason-cli"
-        let g:vimreason_ocamlmerlin_path = __ReasonUtilsTrimStr(system('ocamlmerlin ----where'))
+      if g:reasonml_ocamlmerlin_path =~ "reason-cli"
+        let g:reasonml_ocamlmerlin_path = __ReasonUtilsTrimStr(system('ocamlmerlin ----where'))
       endif
 
-      let ocamlmerlin=substitute(g:vimreason_ocamlmerlin_path,'ocamlmerlin\(\.exe\)\?$','','') . "../share/merlin/vim/"
+      let ocamlmerlin=substitute(g:reasonml_ocamlmerlin_path,'ocamlmerlin\(\.exe\)\?$','','') . "../share/merlin/vim/"
       let ocamlmerlinRtp = __ReasonUtilsDirPath(ocamlmerlin)
       " syntastic. Enabled by default, no-op when syntastic isn't present
       let g:syntastic_ocaml_checkers=['merlin']
@@ -183,8 +183,8 @@ function! ReasonMaybeUseThisMerlinForAllProjects(thisProjectsMerlinPath)
       " TODO: Make reasonPluginLoader do this rtp modification like VimPlug.
       execute "set rtp+=".ocamlmerlinRtp
     else
-      if thisProjectsMerlinPath != g:vimreason_ocamlmerlin_path
-        let res = console#Info("Starting merlin for new project, using a previously loaded merlin which differs. This might cause issues. See g:vimreason_ocamlmerlin_path and b:thisProjectsMerlinPath")
+      if thisProjectsMerlinPath != g:reasonml_ocamlmerlin_path
+        let res = console#Info("Starting merlin for new project, using a previously loaded merlin which differs. This might cause issues. See g:reasonml_ocamlmerlin_path and b:thisProjectsMerlinPath")
       endif
     endif
   endif
@@ -219,5 +219,5 @@ function! MerlinSelectBinary()
   else
      call console#Warn('empty project root - this probably should not happen.')
   endif
-  return g:vimreason_ocamlmerlin_path
+  return g:reasonml_ocamlmerlin_path
 endfunction

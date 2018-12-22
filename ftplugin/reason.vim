@@ -26,10 +26,10 @@ if projectRoot == []
 else
   let info = esy#FetchProjectInfoForProjectRoot(projectRoot)
   " For every new buffer we can perform the check again if necessary.
-  if empty(g:vimreason_esy_discovered_path)
+  if empty(g:reasonml_esy_discovered_path)
     let res = esy#LocateBinaryWithoutEsy("esy")
     if res != -1
-      let g:vimreason_esy_discovered_path = res
+      let g:reasonml_esy_discovered_path = res
     endif
   endif
   if info == []
@@ -41,8 +41,8 @@ else
       " Detect when an esy field is later added. We'll need to completely kill
       " merlin. We can only have one version of merlin loaded per Vim.
     else
-      if empty(g:vimreason_esy_discovered_path)
-        call console#Warning("esy is not installed in your global path. If this is a mistake, try setting g:vimreason_esy_path and reloading your editor")
+      if empty(g:reasonml_esy_discovered_path)
+        call console#Warning("esy is not installed in your global path. If this is a mistake, try setting g:reasonml_esy_path and reloading your editor")
         let b:doing_ftplugin =0
         finish
       endif
@@ -81,8 +81,8 @@ if b:thisProjectsMerlinPath != -1
 endif
 
 " ReasonMaybeUseThisMerlinForAllProjects should set
-" g:vimreason_ocamlmerlin_path if it was able to.
-if !empty(g:vimreason_ocamlmerlin_path)
+" g:reasonml_ocamlmerlin_path if it was able to.
+if !empty(g:reasonml_ocamlmerlin_path)
   if exists('g:merlin')
     let res = merlin#Register()
   endif
