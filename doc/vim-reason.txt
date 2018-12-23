@@ -199,7 +199,8 @@ should apply? It shouldn't always be the linked packages' dev environment,
 because then your resolutions from the top level project wouldn't apply.
 
 ================================================================================
-VENDORINGS                                                 *reason-configuration*
+VENDORINGS                                                     *reason-vendoring*
+
 
 `vim-reason` includes some plugins to integrate well with your system.  You
 might have these plugins already installed for other reasons, but these
