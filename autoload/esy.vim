@@ -23,6 +23,15 @@ function! s:resultFirstLineOr(res, orThis)
   endif
 endfunction
 
+function! s:jsonObjOr(res, orThis)
+  if a:res['exit_code'] == 0
+    let str = '' . join(a:res['stdout'], " ")
+    return eval('' . substitute(substitute(str, "true,", "1,", "g"), "false,", "0,", "g"))
+  else
+    return a:orThis
+  endif
+endfunction
+
 " TODO:
 " - Keep track of buffer local variables, invalidated with buffer file path
 "   changes.
@@ -174,6 +183,10 @@ function! esy#FetchProjectRoot()
   return []
 endfunction
 
+function! esy#getEsyPath()
+  return empty(g:reasonml_esy_discovered_path) ? "esy" : g:reasonml_esy_discovered_path
+endfunction
+
 "
 " Allows defering of running commands the first time until built once. Don't
 " start the merlin process until you've built it etc. Returns empty array for
@@ -188,31 +201,38 @@ function! esy#FetchProjectInfoForProjectRoot(projectRoot)
   if a:projectRoot == []
     return []
   else
-    let l:jsonPath = resolve(a:projectRoot[0] . '/' . a:projectRoot[1])
-    let l:jsonPathReadable = filereadable(l:jsonPath)
-    if l:jsonPathReadable
-      let l:packageText = join(readfile(l:jsonPath), "\n")
-
-      let l:status = 'invalid' " Default to None
-      let l:hasEsyFieldInPackageText = esy#HasEsyField(l:packageText)
-      if l:hasEsyFieldInPackageText
-        if isdirectory(a:projectRoot[0] . '/node_modules')
-          let l:commandEnv=a:projectRoot[0] . '/node_modules/.cache/_esy/build/bin/command-env'
-          if filereadable(l:commandEnv)
-            let l:status = "built"
-          else
-            let l:status = "installed"
-          endif
-        else
-          let l:status = "uninitialized"
-        endif
-
+    let rootDir = a:projectRoot[0]
+    let cmd = esy#cdCommand(rootDir, esy#getEsyPath() . ' status')
+    let ret = xolox#misc#os#exec({'command': cmd, 'check': 0})
+    let statObj = s:jsonObjOr(ret, g:esy#errCantStatus)
+    if esy#matchError(statObj, g:esy#errCantStatus)
+      if !b:did_warn_cant_status
+        call console#Error("Failed to call esy status on project")
+        let b:did_warn_cant_status = 1
+        return []
+      endif
+    endif
+    call console#Info(statObj)
+    if !statObj['isProject']
+      return []
+    else
+      if statObj['isProjectReadyForDev']
+        let l:status = 'built'
       else
-        let l:status = 'no-esy-field'
+        if statObj['isProjectFetched']
+          let l:status = 'installed'
+        else
+          let l:status = 'uninitialized'
+        endif
+      endif
+      let l:jsonPath = resolve(a:projectRoot[0] . '/' . a:projectRoot[1])
+      let l:jsonPathReadable = filereadable(l:jsonPath)
+      if l:jsonPathReadable
+        let l:packageText = join(readfile(l:jsonPath), "\n")
+      else
+        let l:packageText = ""
       endif
       return [esy#ProjectNameOfPackageText(l:packageText), l:packageText, l:status, a:projectRoot]
-    else
-      return []
     endif
   endif
 endfunction
@@ -291,7 +311,7 @@ endfunction
 " TODO: Allow supplying an arbitrary buffer nr.
 function! esy#FetchProjectRootCached()
   let l:cacheKey = esy#GetCacheKeyCurrentBuffer()
-  if exists('g:esyProjectRootCacheByBuffer["' . l:cacheKey . '"]')
+  if has_key(g:esyProjectRootCacheByBuffer, l:cacheKey)
     let projectRoot = g:esyProjectRootCacheByBuffer[l:cacheKey]
     if !empty(projectRoot)
       return projectRoot
@@ -314,7 +334,7 @@ function! esy#FetchProjectRootCached()
       " files' locateds are discovered. Just as a convenient time to purge -
       " open a new untracked buffer in your project to refresh it. Close and
       " reopen one etc.
-      if exists('g:esyProjectInfoCacheByProjectRoot["' . projectRoot[0] . '"]')
+      if has_key(g:esyProjectInfoCacheByProjectRoot, projectRoot[0])
         unlet g:esyProjectInfoCacheByProjectRoot[projectRoot[0]]
       endif
       return projectRoot
@@ -334,7 +354,7 @@ function! esy#FetchProjectInfoForProjectRootCached(projectRoot)
     return []
   else
     let l:cacheKey = a:projectRoot[0]
-    if exists('g:esyProjectInfoCacheByProjectRoot["' . l:cacheKey . '"]')
+    if has_key(g:esyProjectInfoCacheByProjectRoot, l:cacheKey)
       return g:esyProjectInfoCacheByProjectRoot[l:cacheKey]
     else
       if g:esyLogCacheMisses
@@ -396,6 +416,26 @@ function! esy#ProjectRootCommandPrefix(projectRoot)
   return cmdPrefix
 endfunction
 
+function! esy#TrySetGlobalEsyBinaryOrWarn()
+  if empty(g:reasonml_esy_discovered_path)
+    let res = esy#LocateEsyBinary(g:reasonml_esy_path)
+    if esy#isError(res)
+      if !b:did_warn_no_esy_yet
+        let msg = esy#matchError(res, g:esy#errVersionTooOld) ? 'Your esy version is too old. Upgrade to the latest esy.' : 'Cannot locate globally installed esy binary - install with npm install -g esy.'
+        let b:did_warn_no_esy_yet = 1
+        call console#Warn(msg)
+      endif
+      let g:reasonml_esy_discovered_path=""
+    else
+      let g:reasonml_esy_discovered_path = res
+    endif
+  endif
+endfunction
+
+function! esy#cdCommand(projectRoot, cmd)
+  let osChangeDir = s:is_win ? ('CD /D ' . a:projectRoot[0] . ' &') : ('cd ' . a:projectRoot[0] . ' &&')
+  return osChangeDir.' '.a:cmd
+endfunction
 
 " Best effort attempt to use esy project. `a:mandateEsy=1` causes it to fail
 " if it can't use the esy project.
@@ -417,8 +457,7 @@ function! esy#ProjectExecForProjectRoot(projectRoot, cmd, mandateEsy, input)
     if a:mandateEsy && (esy#FetchProjectInfoForProjectRoot(a:projectRoot)[2] != 'built' )
       throw "called esy#FetchProjectInfoForProjectRoot on a project not installed and built " . a:projectRoot[0]
     else
-      let osChangeDir = s:is_win ? ('CD /D ' . a:projectRoot[0] . ' &') : ('cd ' . a:projectRoot[0] . ' &&')
-      let ret = xolox#misc#os#exec({'command': osChangeDir.' '.g:reasonml_esy_discovered_path.' '.a:cmd, 'stdin': a:input, 'check': 0})
+      let ret = xolox#misc#os#exec({'command': esy#cdCommand(a:projectRoot, g:reasonml_esy_discovered_path.' '.a:cmd), 'stdin': a:input, 'check': 0})
     endif
   endif
   if ret['exit_code'] != 0
@@ -515,14 +554,52 @@ function! s:platformLocatorCommand(name)
   return s:is_win ? ('where ' . a:name) : ('which ' . a:name)
 endfunction
 
-" Locates a binary by name, for the platform's default executable system (on
-" windows, that's cmd.exe and `where`') within the current esy project if
-" possible.
-" This should probably be added to xolox's shell libary.
-" Returns -1 if missing because people would misuse a return value of zero.
-function! esy#LocateBinaryWithoutEsy(name)
-  let res = xolox#misc#os#exec({'command': s:platformLocatorCommand(a:name), 'check': 0})
-  return s:resultFirstLineOr(res, -1)
+" Error codes - all negative numbers.
+let g:esy#errNoEsyBinary={'thisIsAnError': 1, 'code': 1}
+let g:esy#errVersionTooOld={'thisIsAnError': 1, 'code': 2}
+let g:esy#errCantStatus={'thisIsAnError': 1, 'code': 3}
+function! esy#isError(ret)
+  return type(a:ret) == v:t_dict && has_key(a:ret, 'thisIsAnError')
+endfunction
+
+function! esy#matchError(ret, err)
+  return type(a:err) == v:t_dict && has_key(a:err, 'thisIsAnError') && type(a:ret) == v:t_dict && has_key(a:ret, 'thisIsAnError') && a:ret['code'] == a:err['code']
+endfunction
+
+" Locates the esy binary with optional user override. Uses the platform's
+" default executable system (on windows, that's cmd.exe and `where`') within
+" the current esy project if possible.
+" Returns g:esy#err codes as above.
+function! esy#LocateEsyBinary(override)
+  if empty(a:override)
+    let binLoc = xolox#misc#os#exec({'command': s:platformLocatorCommand("esy"), 'check': 0})
+    let binLoc = s:resultFirstLineOr(binLoc, g:esy#errNoEsyBinary)
+    if esy#matchError(binLoc, g:esy#errNoEsyBinary)
+      return g:esy#errNoEsyBinary
+    endif
+  else
+    let binLoc = a:override
+  endif
+  let versionRes = xolox#misc#os#exec({'command': binLoc . " --version", 'check': 0})
+  let versionRes = s:resultFirstLineOr(versionRes, g:esy#errNoEsyBinary)
+  " Can't invoke --version for some reason.
+  if esy#matchError(versionRes, g:esy#errNoEsyBinary)
+    return g:esy#errNoEsyBinary
+  else
+    let matches = matchlist(versionRes, "\\([0-9]\\+\\)\\.\\([0-9]\\+\\)\\.\\([0-9]\\+\\)")
+    if empty(matches)
+      return g:esy#errNoEsyBinary
+    endif
+    let major = matches[1]
+    let minor = matches[2]
+    let patch = matches[3]
+    " The esy status command was added in 0.4.4.
+    if major >=0 && ((minor == 4 && patch >= 4) || minor > 4)
+      return binLoc
+    else
+      return g:esy#errVersionTooOld
+    endif
+  endif
 endfunction
 
 " Locates a binary by name, for the platform's default executable system (on

@@ -7,11 +7,15 @@ else
   endif
 endif
 
+" Allow to be overridden by g:reasonml_esy_path.
+" We will still check the version.
 if !exists('g:reasonml_esy_path')
   let g:reasonml_esy_path=''
 endif
 " Where esy is found to be installed.
-let g:reasonml_esy_discovered_path=''
+let g:reasonml_esy_discovered_path=g:reasonml_esy_path
+" Esy version installed.
+let g:reasonml_esy_discovered_ver=''
 
 
 let g:esyLogCacheMisses=0
@@ -22,6 +26,8 @@ let g:esyLocatedBinaryByProjectRootDir={}
 
 
 let g:esyProjectManagerPluginLoaded=1
+
+call esy#TrySetGlobalEsyBinaryOrWarn()
 
 
 

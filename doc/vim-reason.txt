@@ -201,7 +201,6 @@ because then your resolutions from the top level project wouldn't apply.
 ================================================================================
 VENDORINGS                                                     *reason-vendoring*
 
-
 `vim-reason` includes some plugins to integrate well with your system.  You
 might have these plugins already installed for other reasons, but these
 particular plugins likely don't present many problems when duplicated.

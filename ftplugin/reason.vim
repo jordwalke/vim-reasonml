@@ -12,6 +12,8 @@ if exists("b:doing_ftplugin")
 endif
 
 let b:doing_ftplugin = 1
+let b:did_warn_no_esy_yet = 0
+let b:did_warn_cant_status = 0
 
 
 " call ReasonEnsureShellPlugins()
@@ -24,14 +26,13 @@ if projectRoot == []
   let b:doing_ftplugin =0
   finish
 else
+  call esy#TrySetGlobalEsyBinaryOrWarn()
+  if empty(g:reasonml_esy_discovered_path)
+    let b:doing_ftplugin =0
+    finish
+  endif
   let info = esy#FetchProjectInfoForProjectRoot(projectRoot)
   " For every new buffer we can perform the check again if necessary.
-  if empty(g:reasonml_esy_discovered_path)
-    let res = esy#LocateBinaryWithoutEsy("esy")
-    if res != -1
-      let g:reasonml_esy_discovered_path = res
-    endif
-  endif
   if info == []
   else
     let status = esy#ProjectStatusOfProjectInfo(info)
@@ -41,11 +42,6 @@ else
       " Detect when an esy field is later added. We'll need to completely kill
       " merlin. We can only have one version of merlin loaded per Vim.
     else
-      if empty(g:reasonml_esy_discovered_path)
-        call console#Warning("esy is not installed in your global path. If this is a mistake, try setting g:reasonml_esy_path and reloading your editor")
-        let b:doing_ftplugin =0
-        finish
-      endif
       if status != 'built'
         call console#Info("Esy: " . status . ". IDE features will activate once esy project is installed, built. set ft=reason to refresh.")
         let b:doing_ftplugin =0
