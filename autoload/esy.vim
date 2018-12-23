@@ -192,7 +192,7 @@ function! esy#UpdateLastError(ret)
   let g:esy_last_failed_cmd = a:ret['command']
 endfunction
 
-function! esy#ProjectEnvFromJson(projectRoot)
+function! esy#ProjectEnv(projectRoot)
   if empty(a:projectRoot) || a:projectRoot == [] || empty(g:reasonml_esy_discovered_path)
     return {}
   endif
@@ -206,10 +206,6 @@ function! esy#ProjectEnvFromJson(projectRoot)
     let jsonParse = eval(lines)
     return jsonParse
   endif
-endfunction
-
-function! esy#ProjectEnv(projectRoot)
-  return esy#ProjectEnvFromJson(a:projectRoot)
 endfunction
 
 " TODO: Allow supplying an arbitrary buffer nr.
@@ -276,15 +272,6 @@ function! esy#CmdResetEditorCache()
   let g:esyProjectInfoCacheByProjectRoot={}
   let g:esyLocatedBinaryByProjectRootDir={}
   return "Reset editor cache"
-endfunction
-
-" If the path was gotten from `which` from a mingw system, map it back to a
-" regular windows location. Converts from mingw's view of the disk to windows'
-" Mingw understands windows as well so it would be nice if everything in mingw
-" was in terms of windows, but it's not (when it comes to output)
-" Converts from /c/users/foo to C:/users/foo
-function! esy#mingwPathToWin(path)
-  return substitute(a:path, '\/\([a-zA-Z]\)\/\(.*\)', '\u\1:/\2', '')
 endfunction
 
 
@@ -387,11 +374,6 @@ function! esy#ProjectExec(cmd)
   return esy#ProjectExecForProjectRoot(projectRoot, a:cmd, 1, '')
 endfunction
 
-function! esy#ProjectExecWithStdIn(cmd, input)
-  let projectRoot = esy#FetchProjectRoot()
-  return esy#ProjectExecForProjectRoot(projectRoot, a:cmd, 1, a:input)
-endfunction
-
 function! esy#EnvDict()
   let projectRoot = esy#FetchProjectRoot()
   return esy#EnvDictFor(projectRoot)
@@ -418,6 +400,11 @@ function! esy#Exec_(cmd, useCache)
     let projectRoot = esy#FetchProjectRoot()
     return esy#ProjectExecForProjectRoot(projectRoot, a:cmd, 0, '')
   endif
+endfunction
+
+function! esy#ProjectExec(cmd)
+  let projectRoot = esy#FetchProjectRoot()
+  return esy#ProjectExecForProjectRoot(projectRoot, a:cmd, 1, '')
 endfunction
 
 " Loose form - doesn't require esy project.
@@ -512,20 +499,6 @@ function! esy#EsyLocateBinarySuperCached(name)
     return ret
   endif
 endfunction
-
-" Loose form - doesn't require esy project, but will try if possible.
-function! esy#ExecWithStdIn(cmd, input)
-  let projectRoot = esy#FetchProjectRoot()
-  return esy#ProjectExecForProjectRoot(projectRoot, a:cmd, 0, a:input)
-endfunction
-
-" Raw exec.
-function! esy#ExecWithStdInDoNotUseProject(cmd, input)
-  " Check:0 means it won't throw on non-zero return code.
-  let ret = xolox#misc#os#exec({'command': a:cmd, 'input': a:input, 'check': 0})
-  return s:resultFirstLineOr(ret, -1)
-endfunction
-
 
 function! esy#GetCacheKeyCurrentBuffer()
   let l:isUnnamed=expand("%") == ''
