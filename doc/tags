@@ -4,7 +4,6 @@
 :ReasonPrettyPrint	vim-reason.txt	/*:ReasonPrettyPrint*
 ft-reason	vim-reason.txt	/*ft-reason*
 reason	vim-reason.txt	/*reason*
-reason	vim-reason.txt	/*reason*
 reason-commands	vim-reason.txt	/*reason-commands*
 reason-configuration	vim-reason.txt	/*reason-configuration*
 reason-intro	vim-reason.txt	/*reason-intro*
