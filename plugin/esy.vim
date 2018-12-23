@@ -1,12 +1,3 @@
-if !exists('g:esy_environment_mode')
-  let g:esy_environment_mode='json'
-else
-  if g:esy_environment_mode != 'json' && g:esy_environment_mode != 'command'
-    let msg = "Your esy_environment_mode is set to " . g:esy_environment_mode . " - this makes no sense."
-    call console#Error(msg)
-  endif
-endif
-
 " Allow to be overridden by g:reasonml_esy_path.
 " We will still check the version.
 if !exists('g:reasonml_esy_path')

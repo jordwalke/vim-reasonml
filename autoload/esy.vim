@@ -91,39 +91,6 @@ endfunction
 " Expensive, Only Do Once In While. Always up to date.
 " ======================================================================
 
-" Returns env object with esy project environment.
-" function! esy#FetchEnv_(useCache)
-"   let singleQuote="'"
-"   " from:
-"   " substitute(substitute(string,"'","''","g"),'^.*$','''\0''')
-"   let replaceSingleQuotesInVar = "substitute(submatch(2),\"'\",\"''\",\"g\")"
-"   let l:envResult = ''
-"   if a:useCache
-"     let l:envResult = s:resultStdoutOr(esy#Exec("env"), '')
-"   else
-"     let l:envResult = s:resultStdoutOr(esy#ExecCached("env"), '')
-"   endif
-
-"   let rows = substitute(
-"     \ l:envResult,
-"     \ '\([a-zA-Z0-9_!:\(\)]\+\)=\([^\n]*\)',
-"     \ '\=singleQuote . submatch(1) . singleQuote . ":" . singleQuote . ' . replaceSingleQuotesInVar . ' . singleQuote . ","',
-"     \ 'g'
-"     \ )
-"   " If evaling, need to remove newlines
-"   let rowsOneLine = substitute(rows, "\n", " ", "g")
-"   let object = '{' . rowsOneLine . '}'
-"   " echo 'returning dict:' . object
-"   return eval(object)
-" endfunction
-
-" function! esy#FetchEnv()
-"   return esy#FetchEnv_(0)
-" endfunction
-" function! esy#FetchEnvCached()
-"   return esy#FetchEnv_(1)
-" endfunction
-
 
 " Returns empty list if not a valid esy project.
 function! esy#FetchProjectRoot()
@@ -219,40 +186,6 @@ function! esy#CmdFetchProjectInfo()
   return esy#FetchProjectInfoForProjectRoot(esy#FetchProjectRoot())
 endfunction
 
-function! esy#ProjectEnvFromCommandEnv(projectRoot)
-  if empty(a:projectRoot) || a:projectRoot == []
-    return 0
-  endif
-  let l:commandEnv=a:projectRoot[0] . '/node_modules/.cache/_esy/build/bin/command-env'
-  if filereadable(l:commandEnv)
-    let lines = readfile(l:commandEnv)
-    let i = 0
-    let vars = []
-    while i < len(lines)
-      let line = lines[i]
-      let matchesAssign = match(line, 'export [a-zA-Z_]\+=".*"')
-      if matchesAssign == 0
-        let name = substitute(line, 'export \([a-zA-Z_]\+\)=".*"', '\1', 'g')
-        let val = substitute(line, 'export [a-zA-Z_]\+="\(.*\)"', '\1', 'g')
-        call extend(vars, [{'name': name, 'val': val}])
-      endif
-      let i = i+1
-    endwhile
-    let varDict = {}
-    let i = 0
-    while i < len(vars)
-      let name = vars[i]['name']
-      let val = vars[i]['val']
-      let val = substitute(val, '$' . name, has_key(varDict, name) ? varDict[name] : s:platformVarName(name), 'g')
-      let varDict[name] = val
-      let i = i + 1
-    endwhile
-    return varDict
-  else
-    return {}
-  endif
-endfunction
-
 function! esy#UpdateLastError(ret)
   let g:esy_last_failed_stderr = join(a:ret['stderr'], "\n")
   let g:esy_last_failed_stdout = join(a:ret['stdout'], "\n")
@@ -276,13 +209,7 @@ function! esy#ProjectEnvFromJson(projectRoot)
 endfunction
 
 function! esy#ProjectEnv(projectRoot)
-  let g:envJson = esy#ProjectEnvFromJson(a:projectRoot)
-  let g:env = esy#ProjectEnvFromCommandEnv(a:projectRoot)
-  if g:esy_environment_mode == 'json'
-    return esy#ProjectEnvFromJson(a:projectRoot)
-  else
-    return esy#ProjectEnvFromCommandEnv(a:projectRoot)
-  endif
+  return esy#ProjectEnvFromJson(a:projectRoot)
 endfunction
 
 " TODO: Allow supplying an arbitrary buffer nr.
@@ -366,32 +293,6 @@ endfunction
 " These functions are also slower, and will never use the cache, so only
 " perform them every once in a while, on demand etc.
 " ======================================================================
-
-function! s:platformVarName(nm)
-  return (s:is_win ? ('%' . a:nm . '%') : ('$' . a:nm))
-endfunction
-
-function! esy#ProjectRootCommandPrefix(projectRoot)
-  let varDict = esy#ProjectEnv(a:projectRoot)
-
-  let ks = keys(varDict)
-  let cmdPrefix = []
-  if s:is_win
-    call extend(cmdPrefix, ["@echo off"])
-  endif
-  let i = 0
-  while i < len(ks)
-    let name = ks[i]
-    let val = varDict[name]
-    if s:is_win
-      call extend(cmdPrefix, ['set "' . name . '=' . val . '"'])
-    else
-      call extend(cmdPrefix, ['export ' . name . '="' . val . '" '])
-    endif
-    let i = i + 1
-  endwhile
-  return cmdPrefix
-endfunction
 
 function! esy#TrySetGlobalEsyBinaryOrWarn()
   if empty(g:reasonml_esy_discovered_path)
