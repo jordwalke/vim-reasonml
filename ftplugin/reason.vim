@@ -33,17 +33,18 @@ else
   endif
   let info = esy#FetchProjectInfoForProjectRoot(projectRoot)
   " For every new buffer we can perform the check again if necessary.
-  if info == []
+  if empty(info)
   else
     let status = esy#ProjectStatusOfProjectInfo(info)
-    if status == 'no-esy-field'
+    if empty(status) || !status['isProject']
       " Okay, maybe this is a BuckleScript, or OPAM package. We'll work with
       " the globally installed toolchain
       " Detect when an esy field is later added. We'll need to completely kill
       " merlin. We can only have one version of merlin loaded per Vim.
     else
-      if status != 'built'
-        call console#Info("Esy: " . status . ". IDE features will activate once esy project is installed, built. set ft=reason to refresh.")
+      if !status['isProjectReadyForDev']
+        let msg = status['isProjectFetched'] ? 'Project installed but not built. Run esy build.' : 'Project not installed and not built. Run esy from the root directory.'
+        call console#Info("Esy: " . msg)
         let b:doing_ftplugin =0
         finish
       endif

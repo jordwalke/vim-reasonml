@@ -10,18 +10,19 @@ function! airline#extensions#esy#GetEsyProjectStatus()
       return ''
     else
       let projectInfo = esy#FetchProjectInfoForProjectRootCached(l:esyLocatedProjectRoot)
-      if (projectInfo == [] || projectInfo[2] == 'no-esy-field')
+      if (projectInfo == [] || !esy#ProjectStatusOfProjectInfo(projectInfo)['isProject'])
         return ''
       else
-        let l:displayStatus = ""
-        if projectInfo[2] == "uninitialized"
+        let status = esy#ProjectStatusOfProjectInfo(projectInfo)
+        let l:displayStatus =  " [not installed]"
+        if status['isProjectSolved']
           let l:displayStatus = " [not installed]"
         endif
-        if projectInfo[2] == "installed"
+        if status['isProjectFetched']
           let l:displayStatus = " [not built]"
         endif
-        if projectInfo[2] == "invalid"
-          let l:displayStatus = " [invalid project]"
+        if status['isProjectReadyForDev']
+          let l:displayStatus = ""
         endif
         return esy#ProjectNameOfProjectInfo(l:projectInfo) . l:displayStatus . g:airline_symbols.space . g:airline_right_alt_sep . g:airline_symbols.space
       endif

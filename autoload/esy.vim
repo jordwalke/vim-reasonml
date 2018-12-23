@@ -25,32 +25,12 @@ endfunction
 
 function! s:jsonObjOr(res, orThis)
   if a:res['exit_code'] == 0
-    let str = '' . join(a:res['stdout'], " ")
-    return eval('' . substitute(substitute(str, "true,", "1,", "g"), "false,", "0,", "g"))
+    let str = '' . join(a:res['stdout'], "") " Empty string is required to match correctly on null}
+    return eval('' . substitute(substitute(substitute(str, "true,", "1,", "g"), "false,", "0,", "g"), "null\\([,\\}]\\)", "''\\1", "g"))
   else
     return a:orThis
   endif
 endfunction
-
-" TODO:
-" - Keep track of buffer local variables, invalidated with buffer file path
-"   changes.
-"   - b:esyProjectType:
-"     if package.json but no esy field then "npm"
-"     if esy.json or pacakge.json with esy field: "esy"
-"     else "other"
-"   Everything Else Only Applies to esyProjectType="esy"
-"   ---------------------------------------------------
-"   - b:esyProjectStatus: "uninitialized" => "installed" => "dependencies-built"
-"       exists(node_modules) && !exists(node_modules/.cache/_esy/build/bin/command-env) => "[not built]"
-"       !exists(node_modules) => "[not installed]"
-"   - b:esyProjectName: project-name
-"   - b:esyProjectPath: /path/to/project
-"   - b:esyProjectConfigName: esy.json/package.json
-"   - b:lastFilePath (in case you move the file in the buffer).
-"   - b:esyLastTimeCheckedProjectName
-"   - b:esyLastTimeCheckedEsyEnvFile
-"   - b:esyEnvContents
 
 let s:is_win = has('win16') || has('win32') || has('win64')
 
@@ -96,8 +76,9 @@ endfunction
 
 function! esy#ProjectStatusOfProjectInfo(info)
   if a:info == []
-    echoms "Someone is passing empty info to GetProjectStatus - returning invalid project status"
-    return 'invalid'
+    call console#Error("Someone is passing empty info to GetProjectStatus - returning invalid project status")
+    " let's let the empty object represent "invalid" status.
+    return {}
   else
     return a:info[2]
   endif
@@ -192,11 +173,8 @@ endfunction
 " start the merlin process until you've built it etc. Returns empty array for
 " invalid projects, else returns an array with:
 " [projectName, packageText, projectStatus, projectRoot].
-" projectStatus is either 'invalid', 'no-esy-field', 'uninitialized', 'installed', 'built' for
-" projectStatus (`no-esy-field` means it's not an esy enabled package.json project,
-" but it is a package.json project.)
+" projectStatus is the result of esy status
 "
-" If it is 'no-esy-field', then it should be treated like a non-esy project.
 function! esy#FetchProjectInfoForProjectRoot(projectRoot)
   if a:projectRoot == []
     return []
@@ -212,7 +190,6 @@ function! esy#FetchProjectInfoForProjectRoot(projectRoot)
         return []
       endif
     endif
-    call console#Info(statObj)
     if !statObj['isProject']
       return []
     else
@@ -232,7 +209,7 @@ function! esy#FetchProjectInfoForProjectRoot(projectRoot)
       else
         let l:packageText = ""
       endif
-      return [esy#ProjectNameOfPackageText(l:packageText), l:packageText, l:status, a:projectRoot]
+      return [esy#ProjectNameOfPackageText(l:packageText), l:packageText, statObj, a:projectRoot]
     endif
   endif
 endfunction
@@ -454,7 +431,9 @@ function! esy#ProjectExecForProjectRoot(projectRoot, cmd, mandateEsy, input)
     if empty(g:reasonml_esy_discovered_path)
       call console#Error("Running command " . a:cmd . " without an esy")
     endif
-    if a:mandateEsy && (esy#FetchProjectInfoForProjectRoot(a:projectRoot)[2] != 'built' )
+    let projectInfo = esy#FetchProjectInfoForProjectRoot(a:projectRoot)
+    let projectStatus = esy#ProjectStatusOfProjectInfo(projectInfo)
+    if a:mandateEsy && (!projectStatus['isProjectReadyForDev'])
       throw "called esy#FetchProjectInfoForProjectRoot on a project not installed and built " . a:projectRoot[0]
     else
       let ret = xolox#misc#os#exec({'command': esy#cdCommand(a:projectRoot, g:reasonml_esy_discovered_path.' '.a:cmd), 'stdin': a:input, 'check': 0})
