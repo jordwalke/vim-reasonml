@@ -366,13 +366,6 @@ endfunction
 function! esy#EnvDictFor(projectRoot,file)
 endfunction
 
-" TOOD: Clean up a lot of this stuff with optional args:
-" https://vi.stackexchange.com/a/11548
-function! esy#ProjectExec(cmd)
-  let projectRoot = esy#FetchProjectRoot()
-  return esy#ProjectExecForProjectRoot(projectRoot, a:cmd, 1, '')
-endfunction
-
 function! esy#EnvDict()
   let projectRoot = esy#FetchProjectRoot()
   return esy#EnvDictFor(projectRoot)
@@ -401,6 +394,8 @@ function! esy#Exec_(cmd, useCache)
   endif
 endfunction
 
+" TOOD: Clean up a lot of this stuff with optional args:
+" https://vi.stackexchange.com/a/11548
 function! esy#ProjectExec(cmd)
   let projectRoot = esy#FetchProjectRoot()
   return esy#ProjectExecForProjectRoot(projectRoot, a:cmd, 1, '')
