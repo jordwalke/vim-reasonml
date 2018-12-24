@@ -76,7 +76,6 @@ endfunction
 
 function! esy#ProjectStatusOfProjectInfo(info)
   if a:info == []
-    throw "S"
     call console#Error("Someone is passing empty info to esy#ProjectStatusOfProjectInfo - returning invalid project status")
     " let's let the empty object represent "invalid" status.
     return {}
