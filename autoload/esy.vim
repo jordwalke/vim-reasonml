@@ -67,7 +67,7 @@ endfunction
 
 function! esy#ProjectNameOfProjectInfo(info)
   if a:info == []
-    echoms "Someone is passing empty info to GetProjectStatus"
+    echoms "Someone is passing empty info to esy#ProjectNameOfProjectInfo"
     return ''
   else
     return a:info[0]
@@ -76,7 +76,7 @@ endfunction
 
 function! esy#ProjectStatusOfProjectInfo(info)
   if a:info == []
-    call console#Error("Someone is passing empty info to GetProjectStatus - returning invalid project status")
+    call console#Error("Someone is passing empty info to esy#ProjectStatusOfProjectInfo - returning invalid project status")
     " let's let the empty object represent "invalid" status.
     return {}
   else
