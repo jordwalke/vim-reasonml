@@ -76,6 +76,7 @@ endfunction
 
 function! esy#ProjectStatusOfProjectInfo(info)
   if a:info == []
+    throw "S"
     call console#Error("Someone is passing empty info to esy#ProjectStatusOfProjectInfo - returning invalid project status")
     " let's let the empty object represent "invalid" status.
     return {}
@@ -146,8 +147,7 @@ function! esy#FetchProjectInfoForProjectRoot(projectRoot)
   if a:projectRoot == []
     return []
   else
-    let rootDir = a:projectRoot[0]
-    let cmd = esy#cdCommand(rootDir, esy#getEsyPath() . ' status')
+    let cmd = esy#cdCommand(a:projectRoot, esy#getEsyPath() . ' status')
     let ret = xolox#misc#os#exec({'command': cmd, 'check': 0})
     let statObj = s:jsonObjOr(ret, g:esy#errCantStatus)
     if esy#matchError(statObj, g:esy#errCantStatus)
