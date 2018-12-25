@@ -76,7 +76,6 @@ unlet s:save_cpo
 if !empty(g:reasonml_force_ocamlmerlin_path)
   let b:reasonml_thisProjectsMerlinPath = g:reasonml_force_ocamlmerlin_path
 else
-  call console#Info("finding merlin binary")
   let b:reasonml_thisProjectsMerlinPath = esy#EsyLocateBinary("ocamlmerlin", projectRoot, projectInfo)
 endif
 

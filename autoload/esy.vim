@@ -234,8 +234,9 @@ function! esy#FetchProjectRootCached()
       " files' locateds are discovered. Just as a convenient time to purge -
       " open a new untracked buffer in your project to refresh it. Close and
       " reopen one etc.
-      if has_key(g:esyProjectInfoCacheByProjectRoot, projectRoot[0])
-        unlet g:esyProjectInfoCacheByProjectRoot[projectRoot[0]]
+      let key = esy#GetCacheKeyProjectRoot(projectRoot)
+      if has_key(g:esyProjectInfoCacheByProjectRoot, key)
+        unlet g:esyProjectInfoCacheByProjectRoot[key]
       endif
       return projectRoot
     else
@@ -253,7 +254,7 @@ function! esy#FetchProjectInfoForProjectRootCached(projectRoot)
   if a:projectRoot == []
     return []
   else
-    let l:cacheKey = a:projectRoot[0]
+    let l:cacheKey = esy#GetCacheKeyProjectRoot(a:projectRoot)
     if has_key(g:esyProjectInfoCacheByProjectRoot, l:cacheKey)
       return g:esyProjectInfoCacheByProjectRoot[l:cacheKey]
     else
@@ -270,7 +271,7 @@ endfunction
 function! esy#CmdResetEditorCache()
   let g:esyProjectRootCacheByBuffer={}
   let g:esyProjectInfoCacheByProjectRoot={}
-  let g:esyLocatedBinaryByProjectRootDir={}
+  let g:esyLocatedBinaryByProjectRoot={}
   return "Reset editor cache"
 endfunction
 
@@ -455,14 +456,15 @@ endfunction
 " Something should reset all caches when a project transitions from unbuilt to
 " built.
 function! esy#EsyLocateBinarySuperCached(name, projectRoot, projectInfo)
-  if has_key(g:esyLocatedBinaryByProjectRootDir, a:projectRoot[0])
-    return g:esyLocatedBinaryByProjectRootDir[a:projectRoot[0]]
+  let key = esy#GetCacheKeyProjectRoot(a:projectRoot)
+  if has_key(g:esyLocatedBinaryByProjectRoot, key)
+    return g:esyLocatedBinaryByProjectRoot[key]
   else
     let cmd = s:platformLocatorCommand(a:name)
     let res = esy#ProjectExecForProjectRoot(a:projectRoot, cmd, '')
     let ret = s:resultFirstLineOr(res, -1)
     if ret != -1 && [] != a:projectRoot
-      let g:esyLocatedBinaryByProjectRootDir[a:projectRoot[0]] = ret
+      let g:esyLocatedBinaryByProjectRoot[key] = ret
     endif
     return ret
   endif
@@ -477,6 +479,11 @@ function! esy#GetCacheKeyCurrentBuffer()
     return expand("%:p")
   endif
 endfunction
+
+function! esy#GetCacheKeyProjectRoot(projectRoot)
+  return a:projectRoot[0] . '-' . a:projectRoot[1]
+endfunction
+
 
 " The commands exposed as :EsyCommandName args
 

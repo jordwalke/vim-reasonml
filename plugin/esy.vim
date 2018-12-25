@@ -17,7 +17,7 @@ let g:esyProjectRootCacheByBuffer = { }
 " Most recently discovered project status `esy status` and config by
 " projectRoot.directory + projectRoot.config
 let g:esyProjectInfoCacheByProjectRoot={}
-let g:esyLocatedBinaryByProjectRootDir={}
+let g:esyLocatedBinaryByProjectRoot={}
 
 
 let g:esyProjectManagerPluginLoaded=1
