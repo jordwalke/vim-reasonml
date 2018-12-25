@@ -200,9 +200,9 @@ endfunction
 " plugin does the registering!) So might as well use some ocamlmerlin binary
 " instead of failing.
 function! MerlinSelectBinary()
-  let projectRoot = esy#FetchProjectRoot()
+  let projectRoot = esy#FetchProjectRootCached()
   if !empty(projectRoot)
-    let env = esy#ProjectEnv(projectRoot)
+    let env = esy#ProjectEnvCached(projectRoot)
     " For some reason that env is too large on Windows.
     " Copy over only the subset.
     let env = {

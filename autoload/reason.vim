@@ -23,4 +23,6 @@ function! reason#ReasonOnEnvironmentChanged(projectRoot, projectInfo)
   return g:reasonml_most_recent_ocamlmerlin_path
 
   " Reload merlin
+  unlet b:merlin_path
+  call merlin#Register()
 endfunction

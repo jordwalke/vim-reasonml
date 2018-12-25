@@ -5,6 +5,7 @@ endfunction
 let g:esy_last_failed_stderr = ""
 let g:esy_last_failed_stdout = ""
 let g:esy_last_failed_cmd = ""
+let g:did_warn_no_esy_yet = 0
 
 function! esy#trunc(s, len)
   if len(a:s) < a:len || len(a:s) == a:len
@@ -194,7 +195,8 @@ endfunction
 
 function! esy#ProjectEnv(projectRoot)
   if empty(a:projectRoot) || empty(g:reasonml_esy_discovered_path)
-    return {}
+    call console#Error("Should not be calling ProjectEnv without an esy project and esy")
+    return
   endif
   let ret = xolox#misc#os#exec({'command': 'cd ' . a:projectRoot[0] . ' && esy command-env --json', 'check': 0})
   if ret['exit_code'] != 0
@@ -205,6 +207,20 @@ function! esy#ProjectEnv(projectRoot)
     let lines = join(ret['stdout'], " ")
     let jsonParse = eval(lines)
     return jsonParse
+  endif
+endfunction
+
+function! esy#ProjectEnvCached(projectRoot)
+  let l:cacheKey = esy#GetCacheKeyProjectRoot(a:projectRoot)
+  if has_key(g:esyEnvCacheByProjectRoot, l:cacheKey)
+    return g:esyEnvCacheByProjectRoot[l:cacheKey]
+  else
+    if g:esyLogCacheMisses
+      echomsg "Cache miss project env " . l:cacheKey
+    endif
+    let env = esy#ProjectEnv(a:projectRoot)
+    let g:esyEnvCacheByProjectRoot[l:cacheKey] = env
+    return env
   endif
 endfunction
 
@@ -230,14 +246,6 @@ function! esy#FetchProjectRootCached()
     " in that project implicitly.
     if !empty(projectRoot)
       let g:esyProjectRootCacheByBuffer[l:cacheKey] = projectRoot
-      " Let's also remove any entry in the cache for project status when new
-      " files' locateds are discovered. Just as a convenient time to purge -
-      " open a new untracked buffer in your project to refresh it. Close and
-      " reopen one etc.
-      let key = esy#GetCacheKeyProjectRoot(projectRoot)
-      if has_key(g:esyProjectInfoCacheByProjectRoot, key)
-        unlet g:esyProjectInfoCacheByProjectRoot[key]
-      endif
       return projectRoot
     else
       let g:esyProjectRootCacheByBuffer[l:cacheKey] = projectRoot
@@ -272,6 +280,7 @@ function! esy#CmdResetEditorCache()
   let g:esyProjectRootCacheByBuffer={}
   let g:esyProjectInfoCacheByProjectRoot={}
   let g:esyLocatedBinaryByProjectRoot={}
+  let g:esyEnvCacheByProjectRoot={}
   return "Reset editor cache"
 endfunction
 
@@ -286,9 +295,9 @@ function! esy#TrySetGlobalEsyBinaryOrWarn()
   if empty(g:reasonml_esy_discovered_path)
     let res = esy#LocateEsyBinary(g:reasonml_esy_path)
     if esy#isError(res)
-      if !b:did_warn_no_esy_yet
+      if !g:did_warn_no_esy_yet
         let msg = esy#matchError(res, g:esy#errVersionTooOld) ? 'Your esy version is too old. Upgrade to the latest esy.' : 'Cannot locate globally installed esy binary - install with npm install -g esy.'
-        let b:did_warn_no_esy_yet = 1
+        let g:did_warn_no_esy_yet = 1
         call console#Warn(msg)
       endif
       let g:reasonml_esy_discovered_path=""
@@ -360,13 +369,6 @@ function! esy#ProjectCommandForProjectRoot(projectRoot, cmd)
   endif
 endfunction
 
-function! esy#EnvDictFor(projectRoot,file)
-endfunction
-
-function! esy#EnvDict()
-  let projectRoot = esy#FetchProjectRoot()
-  return esy#EnvDictFor(projectRoot)
-endfunction
 
 " Return empty string if not a valid esy project (malformed JSON etc). Returns
 " "unnamed" if not named. Else the project name.

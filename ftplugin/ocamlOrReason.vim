@@ -13,23 +13,25 @@ if exists("b:doing_ftplugin")
 endif
 
 let b:doing_ftplugin = 1
-let b:did_warn_no_esy_yet = 0
 let b:did_warn_cant_status = 0
 
+call esy#TrySetGlobalEsyBinaryOrWarn()
 
-" call ReasonEnsureShellPlugins()
+" Already would have wared in esy#TrySetGlobalEsyBinaryOrWarn.
+if empty(g:reasonml_esy_discovered_path)
+  let b:doing_ftplugin = 0
+  finish
+endif
 
-
-" Still waiting to load an esy project. It's okay, you can retry again by
-" resettig the fieltype=reason
 let projectInfo = {}
 let projectRoot = esy#FetchProjectRoot()
 if projectRoot == []
+  " Still waiting to load an esy project. It's okay, you can retry again by
+  " resetting the filetype=reason
   call console#Info("Cannot determine project root. No package.json/esy.json file.")
   let b:doing_ftplugin =0
   finish
 else
-  call esy#TrySetGlobalEsyBinaryOrWarn()
   if empty(g:reasonml_esy_discovered_path)
     let b:doing_ftplugin =0
     finish
@@ -79,36 +81,31 @@ else
   let b:reasonml_thisProjectsMerlinPath = esy#EsyLocateBinary("ocamlmerlin", projectRoot, projectInfo)
 endif
 
-if b:reasonml_thisProjectsMerlinPath != -1
+if b:reasonml_thisProjectsMerlinPath != -1 && !empty(b:reasonml_thisProjectsMerlinPath)
   if empty(g:reasonml_most_recent_ocamlmerlin_path)
     " Set the global merlin to this project's merlin.
     let g:reasonml_most_recent_ocamlmerlin_path = b:reasonml_thisProjectsMerlinPath
   endif
-  if !empty(b:reasonml_thisProjectsMerlinPath)
-    " Calling into this function, actually ends up setting ft=reason so you
-    " get caught in a loop which is why we have a b:doing_ftplugin variable).
-    " If b:doing_ftplugin is 1, then it means we're in a "reentrant" ftplugin
-    " call and we know to bail, letting the original call succeed. Calling
-    " into here will also end up calling plugin/reason.vim's
-    " `MerlinSelectBinary()` if merlin was found at this project path and the
-    " merlin vim plugin was loaded.  TODO: We shouldn't ever have a globally
-    " registered merlin path. It should always be tracked per project sandbox
-    " per file.
-    call ReasonMaybeUseThisMerlinVimPluginForAllProjects(b:reasonml_thisProjectsMerlinPath)
-  endif
-endif
-
-" ReasonMaybeUseThisMerlinVimPluginForAllProjects should set
-" g:reasonml_most_recent_ocamlmerlin_path if it was able to.
-if !empty(b:reasonml_thisProjectsMerlinPath)
+  " Load merlin vim plugin if necessary/possible.
+  " Calling into this function, actually ends up setting ft=reason so you
+  " get caught in a loop which is why we have a b:doing_ftplugin variable).
+  " If b:doing_ftplugin is 1, then it means we're in a "reentrant" ftplugin
+  " call and we know to bail, letting the original call succeed. Calling
+  " into here will also end up calling plugin/reason.vim's
+  " `MerlinSelectBinary()` if merlin was found at this project path and the
+  " merlin vim plugin was loaded.  TODO: We shouldn't ever have a globally
+  " registered merlin path. It should always be tracked per project sandbox
+  " per file.
+  call ReasonMaybeUseThisMerlinVimPluginForAllProjects(b:reasonml_thisProjectsMerlinPath)
   " g:merlin was provided by merlin
   if exists('g:merlin')
+    " Registers this buffer with merlin.
     let res = merlin#Register()
   endif
   let b:finished_activating_buffer_successfully = 1
 else
   " Do not set b:finished_activating_buffer_successfully. Could not find merlin.
-  let res = console#Error("Could not find merlin support. Is it listed in your devDependencies?")
+  let res = console#Warn("Could not find merlin support. Is it listed in your devDependencies?")
 endif
 
 let b:doing_ftplugin = 0

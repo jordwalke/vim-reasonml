@@ -13,11 +13,13 @@ let g:esyLogCacheMisses=0
 
 " Tracks the project root on file system by buffer.
 " Each "project root" is a tuple [directory, json config]
+" Let's assume this never changes.
 let g:esyProjectRootCacheByBuffer = { }
 " Most recently discovered project status `esy status` and config by
 " projectRoot.directory + projectRoot.config
 let g:esyProjectInfoCacheByProjectRoot={}
 let g:esyLocatedBinaryByProjectRoot={}
+let g:esyEnvCacheByProjectRoot={}
 
 
 let g:esyProjectManagerPluginLoaded=1
