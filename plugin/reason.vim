@@ -49,8 +49,11 @@ endif
 
 
 let g:reasonml_did_ensure_shell_plugins=0
-if !exists('g:reasonml_ocamlmerlin_path')
-  let g:reasonml_ocamlmerlin_path=''
+if !exists('g:reasonml_force_ocamlmerlin_path')
+  let g:reasonml_force_ocamlmerlin_path=''
+endif
+if !exists('g:reasonml_most_recent_ocamlmerlin_path')
+  let g:reasonml_most_recent_ocamlmerlin_path=''
 endif
 " The binary path that was used to load the vim plugin lazily. If you load
 " multiple projects, each having their own merlin version, you can end up with
@@ -215,10 +218,10 @@ function! MerlinSelectBinary()
           \ }
     let b:merlin_env = env
     " call console#Warn('empty project root - this probably should not happen.')
-    return g:reasonml_ocamlmerlin_path
+    return g:reasonml_most_recent_ocamlmerlin_path
   else
     " call console#Warn('empty project root - this probably should not happen.')
-    return g:reasonml_ocamlmerlin_path
+    return g:reasonml_most_recent_ocamlmerlin_path
   endif
-  return g:reasonml_ocamlmerlin_path
+  return g:reasonml_most_recent_ocamlmerlin_path
 endfunction

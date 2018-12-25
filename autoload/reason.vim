@@ -20,7 +20,7 @@ function! reason#ReasonOnEnvironmentChanged(projectRoot, projectInfo)
   let env = esy#ProjectEnv(projectRoot)
   let merlinEnv = reason#MerlinEnvFromEntireEnv(env)
   let b:merlin_env = merlinEnv
-  return g:reasonml_ocamlmerlin_path
+  return g:reasonml_most_recent_ocamlmerlin_path
 
   " Reload merlin
 endfunction

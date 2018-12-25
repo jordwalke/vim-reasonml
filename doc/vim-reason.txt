@@ -108,12 +108,12 @@ here are their defaults.
 <
 
 
-                                                   *g:reasonml_ocamlmerlin_path*
+                                              *g:reasonml_force_ocamlmerlin_path*
 * Location of ocamlmerlin binary. You can force this to a custom location for
   testing. Make sure it is set before plugins load. In general, you never set
   this because we find the optimal location based on the first file you edit. >
 
-  let g:reasonml_ocamlmerlin_path=''
+  let g:reasonml_force_ocamlmerlin_path=''
 <
 
                                                            *g:reasonml_esy_path*

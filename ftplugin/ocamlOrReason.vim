@@ -73,31 +73,35 @@ unlet s:save_cpo
 " this plugin. The majority of the remaining code is simply copied from
 " Vim-Plug in order to reuse Vim-Plug's lazy loading code.
 
+if !empty(g:reasonml_force_ocamlmerlin_path)
+  let b:reasonml_thisProjectsMerlinPath = g:reasonml_force_ocamlmerlin_path
+else
+  call console#Info("finding merlin binary")
+  let b:reasonml_thisProjectsMerlinPath = esy#EsyLocateBinary("ocamlmerlin", projectRoot, projectInfo)
+endif
 
-call console#Info("finding merlin path for " . projectRoot[0])
-let b:thisProjectsMerlinPath = esy#EsyLocateBinary("ocamlmerlin", projectRoot, projectInfo)
-
-" Calling into this function, actually ends up setting ft=reason so you get
-" caught in a loop which is why we have a b:doing_ftplugin variable). If
-" b:doing_ftplugin is 1, then it means we're in a "reentrant" ftplugin call
-" and we know to bail, letting the original call succeed. Calling into here
-" will also end up calling plugin/reason.vim's `MerlinSelectBinary()` if
-" merlin was found at this project path and the merlin vim plugin was loaded.
-" TODO: We shouldn't ever have a globally registered merlin path. It should
-" always be tracked per project sandbox per file.
-if b:thisProjectsMerlinPath != -1
-  if empty(g:reasonml_ocamlmerlin_path)
+if b:reasonml_thisProjectsMerlinPath != -1
+  if empty(g:reasonml_most_recent_ocamlmerlin_path)
     " Set the global merlin to this project's merlin.
-    let g:reasonml_ocamlmerlin_path = b:thisProjectsMerlinPath
+    let g:reasonml_most_recent_ocamlmerlin_path = b:reasonml_thisProjectsMerlinPath
   endif
-  if !empty(b:thisProjectsMerlinPath)
-    call ReasonMaybeUseThisMerlinVimPluginForAllProjects(b:thisProjectsMerlinPath)
+  if !empty(b:reasonml_thisProjectsMerlinPath)
+    " Calling into this function, actually ends up setting ft=reason so you
+    " get caught in a loop which is why we have a b:doing_ftplugin variable).
+    " If b:doing_ftplugin is 1, then it means we're in a "reentrant" ftplugin
+    " call and we know to bail, letting the original call succeed. Calling
+    " into here will also end up calling plugin/reason.vim's
+    " `MerlinSelectBinary()` if merlin was found at this project path and the
+    " merlin vim plugin was loaded.  TODO: We shouldn't ever have a globally
+    " registered merlin path. It should always be tracked per project sandbox
+    " per file.
+    call ReasonMaybeUseThisMerlinVimPluginForAllProjects(b:reasonml_thisProjectsMerlinPath)
   endif
 endif
 
 " ReasonMaybeUseThisMerlinVimPluginForAllProjects should set
-" g:reasonml_ocamlmerlin_path if it was able to.
-if !empty(b:thisProjectsMerlinPath)
+" g:reasonml_most_recent_ocamlmerlin_path if it was able to.
+if !empty(b:reasonml_thisProjectsMerlinPath)
   " g:merlin was provided by merlin
   if exists('g:merlin')
     let res = merlin#Register()
