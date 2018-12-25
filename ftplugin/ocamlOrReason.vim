@@ -22,8 +22,10 @@ let b:did_warn_cant_status = 0
 
 " Still waiting to load an esy project. It's okay, you can retry again by
 " resettig the fieltype=reason
+let projectInfo = {}
 let projectRoot = esy#FetchProjectRoot()
 if projectRoot == []
+  call console#Info("Cannot determine project root. No package.json/esy.json file.")
   let b:doing_ftplugin =0
   finish
 else
@@ -32,20 +34,26 @@ else
     let b:doing_ftplugin =0
     finish
   endif
-  let info = esy#FetchProjectInfoForProjectRoot(projectRoot)
+  let projectInfo = esy#FetchProjectInfoForProjectRoot(projectRoot)
   " For every new buffer we can perform the check again if necessary.
-  if empty(info)
+  if empty(projectInfo)
+    call console#Error("Problem determining status of project")
+    let b:doing_ftplugin =0
+    finish
   else
-    let status = esy#ProjectStatusOfProjectInfo(info)
+    let status = esy#ProjectStatusOfProjectInfo(projectInfo)
     if empty(status) || !status['isProject']
       " Okay, maybe this is a BuckleScript, or OPAM package. We'll work with
       " the globally installed toolchain
       " Detect when an esy field is later added. We'll need to completely kill
       " merlin. We can only have one version of merlin loaded per Vim.
+      call console#Warn("Project at " . projectRoot[0] . " doesn't seem to be a valid esy project")
+      let b:doing_ftplugin =0
+      finish
     else
       if !status['isProjectReadyForDev']
-        let msg = status['isProjectFetched'] ? 'Project installed but not built. Run esy build.' : 'Project not installed and not built. Run esy from the root directory.'
-        call console#Info("Esy: " . msg)
+        let msg = status['isProjectFetched'] ? 'Project installed but not built. Run esy build from project root.' : 'Project not installed and not built. Run esy from the root directory.'
+        call console#Info(msg)
         let b:doing_ftplugin =0
         finish
       endif
@@ -66,7 +74,8 @@ unlet s:save_cpo
 " Vim-Plug in order to reuse Vim-Plug's lazy loading code.
 
 
-let b:thisProjectsMerlinPath = esy#EsyLocateBinary("ocamlmerlin")
+call console#Info("finding merlin path for " . projectRoot[0])
+let b:thisProjectsMerlinPath = esy#EsyLocateBinary("ocamlmerlin", projectRoot, projectInfo)
 
 " Calling into this function, actually ends up setting ft=reason so you get
 " caught in a loop which is why we have a b:doing_ftplugin variable). If
@@ -74,13 +83,22 @@ let b:thisProjectsMerlinPath = esy#EsyLocateBinary("ocamlmerlin")
 " and we know to bail, letting the original call succeed. Calling into here
 " will also end up calling plugin/reason.vim's `MerlinSelectBinary()` if
 " merlin was found at this project path and the merlin vim plugin was loaded.
+" TODO: We shouldn't ever have a globally registered merlin path. It should
+" always be tracked per project sandbox per file.
 if b:thisProjectsMerlinPath != -1
-  call ReasonMaybeUseThisMerlinForAllProjects(b:thisProjectsMerlinPath)
+  if empty(g:reasonml_ocamlmerlin_path)
+    " Set the global merlin to this project's merlin.
+    let g:reasonml_ocamlmerlin_path = b:thisProjectsMerlinPath
+  endif
+  if !empty(b:thisProjectsMerlinPath)
+    call ReasonMaybeUseThisMerlinVimPluginForAllProjects(b:thisProjectsMerlinPath)
+  endif
 endif
 
-" ReasonMaybeUseThisMerlinForAllProjects should set
+" ReasonMaybeUseThisMerlinVimPluginForAllProjects should set
 " g:reasonml_ocamlmerlin_path if it was able to.
-if !empty(g:reasonml_ocamlmerlin_path)
+if !empty(b:thisProjectsMerlinPath)
+  " g:merlin was provided by merlin
   if exists('g:merlin')
     let res = merlin#Register()
   endif

@@ -15,10 +15,14 @@ function! refmt#extractCompilerSyntaxErr(text)
   endif
 endfunction
 
-function! refmt#callRefmtProgram(inLines, ext)
-  let pathTo = esy#EsyLocateBinarySuperCached(g:reasonml_reason)
+function! refmt#callRefmtProgram(inLines, ext, projectRoot, projectInfo)
+  if empty(a:projectRoot)
+    let res = console#Error("File is not in an esy project, refmt cannot be found.")
+    return {}
+  endif
+  let pathTo = esy#EsyLocateBinarySuperCached(g:reasonml_reason, a:projectRoot, a:projectInfo)
   if pathTo == -1
-    let res = console#Error("ReasonPrettyPrint: refmt not found. Open a .re file in a built esy project.")
+    let res = console#Error("refmt not found. Open a .re file in a built esy project.")
     return {}
   endif
   let s:vimreason_args = ""
@@ -44,7 +48,9 @@ endfunction
 function! refmt#Refmt(...)
   let inLines = getline(1,'$')
   let ext = match(expand("%"), "\\.rei$") == -1 ? ".re" : ".rei"
-  let out = refmt#callRefmtProgram(inLines, ext)
+  let projectRoot = esy#FetchProjectRootCached()
+  let projectInfo = esy#FetchProjectInfoForProjectRootCached(projectRoot)
+  let out = refmt#callRefmtProgram(inLines, ext, projectRoot, projectInfo)
   " Already handled refmt being gone
   if empty(out)
     return 0

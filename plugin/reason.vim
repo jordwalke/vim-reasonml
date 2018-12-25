@@ -52,6 +52,13 @@ let g:reasonml_did_ensure_shell_plugins=0
 if !exists('g:reasonml_ocamlmerlin_path')
   let g:reasonml_ocamlmerlin_path=''
 endif
+" The binary path that was used to load the vim plugin lazily. If you load
+" multiple projects, each having their own merlin version, you can end up with
+" multiple different merlin binaries - but we can only use *one* of their vim
+" plugins.
+if !exists('g:reasonml_ocamlmerlin_path_used_to_load_merlin_vim_plugin')
+  let g:reasonml_ocamlmerlin_path_used_to_load_merlin_vim_plugin=''
+endif
 
 " From auto-format plugin:
 " https://github.com/Chiel92/vim-autoformat/blob/master/plugin/autoformat.vim
@@ -160,39 +167,35 @@ function! s:isZero(a)
   return type(a:a) == v:t_string ? 0 : (type(a:a) == v:t_number ? (a:a == 0) : 0)
 endfunction
 
-function! ReasonMaybeUseThisMerlinForAllProjects(thisProjectsMerlinPath)
-  if !empty(a:thisProjectsMerlinPath)
-    let thisProjectsMerlinPath = resolve(__ReasonUtilsTrimStr(a:thisProjectsMerlinPath))
-    if empty(g:reasonml_ocamlmerlin_path)
-      " Set the global merlin to this project's merlin.
-      let g:reasonml_ocamlmerlin_path = thisProjectsMerlinPath
-      " If installed through an esy sandboxed npm release prebuilt binaries find
-      " the real location.
-      if g:reasonml_ocamlmerlin_path =~ "reason-cli"
-        let g:reasonml_ocamlmerlin_path = __ReasonUtilsTrimStr(system('ocamlmerlin ----where'))
-      endif
+function! ReasonMaybeUseThisMerlinVimPluginForAllProjects(thisProjectsMerlinPath)
+  let thisProjectsMerlinPath = resolve(__ReasonUtilsTrimStr(a:thisProjectsMerlinPath))
+  if empty(g:reasonml_ocamlmerlin_path_used_to_load_merlin_vim_plugin)
+    " Set the global merlin to this project's merlin.
+    let g:reasonml_ocamlmerlin_path_used_to_load_merlin_vim_plugin = thisProjectsMerlinPath
 
-      let ocamlmerlin=substitute(g:reasonml_ocamlmerlin_path,'ocamlmerlin\(\.exe\)\?$','','') . "../share/merlin/vim/"
-      let ocamlmerlinRtp = __ReasonUtilsDirPath(ocamlmerlin)
-      " syntastic. Enabled by default, no-op when syntastic isn't present
-      let g:syntastic_ocaml_checkers=['merlin']
-      let g:syntastic_reason_checkers=['merlin']
-      let g:plugs_reasonPluginLoader={}
-      let g:plugs_reasonPluginLoader['merlin'] = {'dir': (ocamlmerlinRtp)}
-      call call(function("ReasonPluginLoaderLoad"), keys(g:plugs_reasonPluginLoader))
-      " TODO: Make reasonPluginLoader do this rtp modification like VimPlug.
-      execute "set rtp+=".ocamlmerlinRtp
-    else
-      if thisProjectsMerlinPath != g:reasonml_ocamlmerlin_path
-        let res = console#Info("Starting merlin for new project, using a previously loaded merlin which differs. This might cause issues. See g:reasonml_ocamlmerlin_path and b:thisProjectsMerlinPath")
-      endif
-    endif
+    let ocamlmerlin=substitute(thisProjectsMerlinPath,'ocamlmerlin\(\.exe\)\?$','','') . "../share/merlin/vim/"
+    let ocamlmerlinRtp = __ReasonUtilsDirPath(ocamlmerlin)
+    " syntastic. Enabled by default, no-op when syntastic isn't present
+    let g:syntastic_ocaml_checkers=['merlin']
+    let g:syntastic_reason_checkers=['merlin']
+    let g:plugs_reasonPluginLoader={}
+    let g:plugs_reasonPluginLoader['merlin'] = {'dir': (ocamlmerlinRtp)}
+    call call(function("ReasonPluginLoaderLoad"), keys(g:plugs_reasonPluginLoader))
+    " TODO: Make reasonPluginLoader do this rtp modification like VimPlug.
+    execute "set rtp+=".ocamlmerlinRtp
   endif
 endfunction
 
 " This is how you customize merlin to allow you to create an environment
 " b:merlin_environment, as well as select a specific binary which may be
 " different from the one used to load plugin code.
+" TODO: If some previous file's merlin binary had been used, and the current
+" does not have an esy project, then use the previous binary/environment.
+" This workflow is important for jumping to location into the standard library
+" because it won't have a project. There's no way you can prevent .ml files
+" from calling into this function and registering merlin (the stock merlin vim
+" plugin does the registering!) So might as well use some ocamlmerlin binary
+" instead of failing.
 function! MerlinSelectBinary()
   let projectRoot = esy#FetchProjectRoot()
   if !empty(projectRoot)
@@ -210,14 +213,12 @@ function! MerlinSelectBinary()
           \ 'OCAML_TOPLEVEL_PATH': has_key(env, 'OCAML_TOPLEVEL_PATH') ? env['OCAML_TOPLEVEL_PATH'] : '',
           \ 'PATH': has_key(env, 'PATH') ? env['PATH'] : ''
           \ }
-    " The empty object if no env
-    if !empty(env)
-      let b:merlin_env = env
-    else
-      call console#Error("Could not load environment for merlin from " . projectRoot[0])
-    endif
+    let b:merlin_env = env
+    " call console#Warn('empty project root - this probably should not happen.')
+    return g:reasonml_ocamlmerlin_path
   else
-     call console#Warn('empty project root - this probably should not happen.')
+    " call console#Warn('empty project root - this probably should not happen.')
+    return g:reasonml_ocamlmerlin_path
   endif
   return g:reasonml_ocamlmerlin_path
 endfunction

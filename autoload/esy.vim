@@ -131,6 +131,7 @@ function! esy#FetchProjectRoot()
   return []
 endfunction
 
+" Used by other plugins to get the esy path. Do not break!
 function! esy#getEsyPath()
   return empty(g:reasonml_esy_discovered_path) ? "esy" : g:reasonml_esy_discovered_path
 endfunction
@@ -192,7 +193,7 @@ function! esy#UpdateLastError(ret)
 endfunction
 
 function! esy#ProjectEnv(projectRoot)
-  if empty(a:projectRoot) || a:projectRoot == [] || empty(g:reasonml_esy_discovered_path)
+  if empty(a:projectRoot) || empty(g:reasonml_esy_discovered_path)
     return {}
   endif
   let ret = xolox#misc#os#exec({'command': 'cd ' . a:projectRoot[0] . ' && esy command-env --json', 'check': 0})
@@ -301,26 +302,21 @@ function! esy#cdCommand(projectRoot, cmd)
   return osChangeDir.' '.a:cmd
 endfunction
 
-" Best effort attempt to use esy project. `a:mandateEsy=1` causes it to fail
-" if it can't use the esy project.
-function! esy#ProjectExecForProjectRoot(projectRoot, cmd, mandateEsy, input)
+" TODO: Make all dependencies explicit inputs to this so we don't have to
+" constantly recheck arguments everywhere. (g:esy#EsyLocateBinary)
+function! esy#ProjectExecForProjectRoot(projectRoot, cmd, input)
   if a:projectRoot == [] || empty(g:reasonml_esy_discovered_path)
-    if a:mandateEsy
-      let msg = (a:projectRoot == []) ? 'Attempting to invoke Esy project command on non esy project. ' : ''
-      let msg = msg . (empty(g:reasonml_esy_discovered_path) ? 'esy does not appear to be installed on your system. It is not on your global PATH perhaps' : '')
-      call console#Error(msg)
-      return -1
-    else
-      " Check:0 means it won't throw on non-zero return code.
-      let ret = xolox#misc#os#exec({'command': a:cmd, 'input': a:input, 'check': 0})
-    endif
+    let msg = (a:projectRoot == []) ? 'Attempting to invoke Esy project command on non esy project. ' : ''
+    let msg = msg . (empty(g:reasonml_esy_discovered_path) ? 'esy does not appear to be installed on your system. It is not on your global PATH perhaps' : '')
+    call console#Error(msg)
+    return -1
   else
     if empty(g:reasonml_esy_discovered_path)
       call console#Error("Running command " . a:cmd . " without an esy")
     endif
     let projectInfo = esy#FetchProjectInfoForProjectRoot(a:projectRoot)
     let projectStatus = esy#ProjectStatusOfProjectInfo(projectInfo)
-    if a:mandateEsy && (!projectStatus['isProjectReadyForDev'])
+    if (!projectStatus['isProjectReadyForDev'])
       throw "called esy#FetchProjectInfoForProjectRoot on a project not installed and built " . a:projectRoot[0]
     else
       let ret = xolox#misc#os#exec({'command': esy#cdCommand(a:projectRoot, g:reasonml_esy_discovered_path.' '.a:cmd), 'stdin': a:input, 'check': 0})
@@ -382,33 +378,11 @@ function! esy#ProjectName()
   endif
 endfunction
 
-" Loose form - doesn't require esy project. Also avoids perf hit without
-" needing cached call. No need to look up project info.
-function! esy#Exec_(cmd, useCache)
-  if a:useCache
-    let projectRoot = esy#FetchProjectRootCached()
-    return esy#ProjectExecForProjectRoot(projectRoot, a:cmd, 0, '')
-  else
-    let projectRoot = esy#FetchProjectRoot()
-    return esy#ProjectExecForProjectRoot(projectRoot, a:cmd, 0, '')
-  endif
-endfunction
-
 " TOOD: Clean up a lot of this stuff with optional args:
 " https://vi.stackexchange.com/a/11548
 function! esy#ProjectExec(cmd)
   let projectRoot = esy#FetchProjectRoot()
-  return esy#ProjectExecForProjectRoot(projectRoot, a:cmd, 1, '')
-endfunction
-
-" Loose form - doesn't require esy project.
-function! esy#Exec(cmd)
-  return esy#Exec_(a:cmd, 0)
-endfunction
-
-" Loose form - doesn't require esy project.
-function! esy#ExecCached(cmd)
-  return esy#Exec_(a:cmd, 1)
+  return esy#ProjectExecForProjectRoot(projectRoot, a:cmd, '')
 endfunction
 
 function! s:platformLocatorCommand(name)
@@ -468,27 +442,27 @@ endfunction
 " possible.
 " This should probably be added to xolox's shell libary.
 " Returns -1 if missing because people would misuse a return value of zero.
-function! esy#EsyLocateBinary(name)
-  let res = esy#Exec(s:platformLocatorCommand(a:name))
+function! esy#EsyLocateBinary(name, projectRoot, projectInfo)
+  let cmd = s:platformLocatorCommand(a:name)
+  let res = esy#ProjectExecForProjectRoot(a:projectRoot, cmd, '')
   return s:resultFirstLineOr(res, -1)
 endfunction
 
-" Loose form - doesn't require esy project.
-" Not only uses ExecCached to cache the project root/project info, but also
-" stores the cached located binary by project root dir.  One problem is that
-" if it was in the global environment, it will be picked up when queried from
-" an unbuilt project, then once the project is built, it isn't refetched.
+" Not only uses cache to cache the project root/project info, but also stores
+" the cached located binary by project root dir.  One problem is that if it
+" was in the global environment, it will be picked up when queried from an
+" unbuilt project, then once the project is built, it isn't refetched.
 " Something should reset all caches when a project transitions from unbuilt to
 " built.
-function! esy#EsyLocateBinarySuperCached(name)
-  let projectRoot = esy#FetchProjectRootCached()
-  if [] != projectRoot && has_key(g:esyLocatedBinaryByProjectRootDir, projectRoot[0])
-    return g:esyLocatedBinaryByProjectRootDir[projectRoot[0]]
+function! esy#EsyLocateBinarySuperCached(name, projectRoot, projectInfo)
+  if has_key(g:esyLocatedBinaryByProjectRootDir, a:projectRoot[0])
+    return g:esyLocatedBinaryByProjectRootDir[a:projectRoot[0]]
   else
-    let res = esy#ExecCached(s:platformLocatorCommand(a:name))
+    let cmd = s:platformLocatorCommand(a:name)
+    let res = esy#ProjectExecForProjectRoot(a:projectRoot, cmd, '')
     let ret = s:resultFirstLineOr(res, -1)
-    if ret != -1 && [] != projectRoot
-      let g:esyLocatedBinaryByProjectRootDir[projectRoot[0]] = ret
+    if ret != -1 && [] != a:projectRoot
+      let g:esyLocatedBinaryByProjectRootDir[a:projectRoot[0]] = ret
     endif
     return ret
   endif
@@ -509,8 +483,11 @@ endfunction
 
 " Loose form - doesn't require esy project.  Problem is this doesn't use the
 " cache, whereas other commands will. Might be misleading.
+" #choppingblock
 function! esy#CmdEsyExec(cmd)
-  let res = esy#Exec_(a:cmd, 0)
+  let projectRoot = esy#FetchProjectRoot()
+  let res = esy#ProjectExecForProjectRoot(projectRoot, a:cmd, '')
+  return esy#ProjectExecForProjectRoot(projectRoot, a:cmd, '')
   if res['exit_code'] == 0
     call console#Info(join(res['stdout'], "\n"))
   else
