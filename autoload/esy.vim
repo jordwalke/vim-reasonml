@@ -216,7 +216,7 @@ function! esy#ProjectEnvCached(projectRoot)
     return g:esyEnvCacheByProjectRoot[l:cacheKey]
   else
     if g:esyLogCacheMisses
-      echomsg "Cache miss project env " . l:cacheKey
+      call console#Info("Cache miss env " . l:cacheKey)
     endif
     let env = esy#ProjectEnv(a:projectRoot)
     let g:esyEnvCacheByProjectRoot[l:cacheKey] = env
@@ -236,7 +236,7 @@ function! esy#FetchProjectRootCached()
     endif
   else
     if g:esyLogCacheMisses
-      echomsg "Cache miss locate " . l:cacheKey
+      call console#Info("Cache miss project root " . l:cacheKey)
     endif
     let projectRoot = esy#FetchProjectRoot()
     " Always update an entry keyed by the project root dir. That way we know
@@ -267,7 +267,7 @@ function! esy#FetchProjectInfoForProjectRootCached(projectRoot)
       return g:esyProjectInfoCacheByProjectRoot[l:cacheKey]
     else
       if g:esyLogCacheMisses
-        echomsg "Cache miss project info " . l:cacheKey
+        call console#Info("Cache miss project info " . l:cacheKey)
       endif
       let info = esy#FetchProjectInfoForProjectRoot(a:projectRoot)
       let g:esyProjectInfoCacheByProjectRoot[l:cacheKey] = info
@@ -457,17 +457,16 @@ endfunction
 " unbuilt project, then once the project is built, it isn't refetched.
 " Something should reset all caches when a project transitions from unbuilt to
 " built.
-function! esy#EsyLocateBinarySuperCached(name, projectRoot, projectInfo)
+function! esy#EsyLocateBinaryCached(name, projectRoot, projectInfo)
   let key = esy#GetCacheKeyProjectRoot(a:projectRoot)
   if has_key(g:esyLocatedBinaryByProjectRoot, key)
     return g:esyLocatedBinaryByProjectRoot[key]
   else
-    let cmd = s:platformLocatorCommand(a:name)
-    let res = esy#ProjectExecForProjectRoot(a:projectRoot, cmd, '')
-    let ret = s:resultFirstLineOr(res, -1)
-    if ret != -1 && [] != a:projectRoot
-      let g:esyLocatedBinaryByProjectRoot[key] = ret
+    if g:esyLogCacheMisses
+      call console#Info("Cache miss locate binary (" . a:name . ") " . key)
     endif
+    let ret = esy#EsyLocateBinary(a:name, a:projectRoot, a:projectInfo)
+    let g:esyLocatedBinaryByProjectRoot[key] = ret
     return ret
   endif
 endfunction

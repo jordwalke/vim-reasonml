@@ -55,6 +55,10 @@ endif
 if !exists('g:reasonml_most_recent_ocamlmerlin_path')
   let g:reasonml_most_recent_ocamlmerlin_path=''
 endif
+if !exists('g:reasonml_most_recent_merlin_env')
+  let g:reasonml_most_recent_merlin_env={}
+endif
+
 " The binary path that was used to load the vim plugin lazily. If you load
 " multiple projects, each having their own merlin version, you can end up with
 " multiple different merlin binaries - but we can only use *one* of their vim
@@ -192,6 +196,7 @@ endfunction
 " This is how you customize merlin to allow you to create an environment
 " b:merlin_environment, as well as select a specific binary which may be
 " different from the one used to load plugin code.
+" By the time this returns you need to have set b:merlin_env (we have)
 " TODO: If some previous file's merlin binary had been used, and the current
 " does not have an esy project, then use the previous binary/environment.
 " This workflow is important for jumping to location into the standard library
@@ -202,25 +207,19 @@ endfunction
 function! MerlinSelectBinary()
   let projectRoot = esy#FetchProjectRootCached()
   if !empty(projectRoot)
-    let env = esy#ProjectEnvCached(projectRoot)
-    " For some reason that env is too large on Windows.
-    " Copy over only the subset.
-    let env = {
-          \ 'CAML_LD_LIBRARY_PATH': has_key(env, 'CAML_LD_LIBRARY_PATH') ? env['CAML_LD_LIBRARY_PATH'] : '',
-          \ 'HOMEPATH': has_key(env, 'HOMEPATH') ? env['HOMEPATH'] : '',
-          \ 'OCAMLFIND_COMMANDS': has_key(env,'OCAMLFIND_COMMANDS') ? env['OCAMLFIND_COMMANDS'] : '',
-          \ 'OCAMLFIND_DESTDIR': has_key(env, 'OCAMLFIND_DESTDIR') ? env['OCAMLFIND_DESTDIR'] : '',
-          \ 'OCAMLFIND_LDCONF': has_key(env, 'OCAMLFIND_LDCONF') ? env['OCAMLFIND_LDCONF'] : '',
-          \ 'OCAMLLIB': has_key(env, 'OCAMLLIB') ? env['OCAMLLIB'] : '',
-          \ 'OCAMLPATH': has_key(env, 'OCAMLPATH') ? env['OCAMLPATH'] : '',
-          \ 'OCAML_TOPLEVEL_PATH': has_key(env, 'OCAML_TOPLEVEL_PATH') ? env['OCAML_TOPLEVEL_PATH'] : '',
-          \ 'PATH': has_key(env, 'PATH') ? env['PATH'] : ''
-          \ }
-    let b:merlin_env = env
-    " call console#Warn('empty project root - this probably should not happen.')
-    return g:reasonml_most_recent_ocamlmerlin_path
+    if !exists("b:merlin_env") || empty(b:merlin_env)
+      call console#Warn("Merlin environment should have been prepared by now. Falling back")
+      let b:merlin_env = g:reasonml_most_recent_merlin_env
+    endif
+    if !exists("b:reasonml_thisProjectsMerlinPath") || empty(b:reasonml_thisProjectsMerlinPath)
+      call console#Warn("Have not found a path to merlin for one file - falling back to most recently found merlin.")
+      return g:reasonml_most_recent_ocamlmerlin_path
+    else
+      return b:reasonml_thisProjectsMerlinPath
+    endif
   else
     " call console#Warn('empty project root - this probably should not happen.')
+    call console#Warn("No esy project found for file - falling back to most recently found merlin.")
     return g:reasonml_most_recent_ocamlmerlin_path
   endif
   return g:reasonml_most_recent_ocamlmerlin_path

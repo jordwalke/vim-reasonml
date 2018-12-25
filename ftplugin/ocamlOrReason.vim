@@ -14,6 +14,7 @@ endif
 
 let b:doing_ftplugin = 1
 let b:did_warn_cant_status = 0
+let b:merlin_env = {}
 
 call esy#TrySetGlobalEsyBinaryOrWarn()
 
@@ -82,10 +83,8 @@ else
 endif
 
 if b:reasonml_thisProjectsMerlinPath != -1 && !empty(b:reasonml_thisProjectsMerlinPath)
-  if empty(g:reasonml_most_recent_ocamlmerlin_path)
-    " Set the global merlin to this project's merlin.
-    let g:reasonml_most_recent_ocamlmerlin_path = b:reasonml_thisProjectsMerlinPath
-  endif
+  " Set the most recent merlin path in case we need some backup later.
+  let g:reasonml_most_recent_ocamlmerlin_path = b:reasonml_thisProjectsMerlinPath
   " Load merlin vim plugin if necessary/possible.
   " Calling into this function, actually ends up setting ft=reason so you
   " get caught in a loop which is why we have a b:doing_ftplugin variable).
@@ -97,9 +96,25 @@ if b:reasonml_thisProjectsMerlinPath != -1 && !empty(b:reasonml_thisProjectsMerl
   " registered merlin path. It should always be tracked per project sandbox
   " per file.
   call ReasonMaybeUseThisMerlinVimPluginForAllProjects(b:reasonml_thisProjectsMerlinPath)
-  " g:merlin was provided by merlin
+  " g:merlin was provided by merlin loaded plugin.
   if exists('g:merlin')
-    " Registers this buffer with merlin.
+    let env = esy#ProjectEnvCached(projectRoot)
+    " For some reason that env is too large on Windows. Copy over only the subset.
+    let env = {
+          \ 'CAML_LD_LIBRARY_PATH': has_key(env, 'CAML_LD_LIBRARY_PATH') ? env['CAML_LD_LIBRARY_PATH'] : '',
+          \ 'HOMEPATH': has_key(env, 'HOMEPATH') ? env['HOMEPATH'] : '',
+          \ 'OCAMLFIND_COMMANDS': has_key(env,'OCAMLFIND_COMMANDS') ? env['OCAMLFIND_COMMANDS'] : '',
+          \ 'OCAMLFIND_DESTDIR': has_key(env, 'OCAMLFIND_DESTDIR') ? env['OCAMLFIND_DESTDIR'] : '',
+          \ 'OCAMLFIND_LDCONF': has_key(env, 'OCAMLFIND_LDCONF') ? env['OCAMLFIND_LDCONF'] : '',
+          \ 'OCAMLLIB': has_key(env, 'OCAMLLIB') ? env['OCAMLLIB'] : '',
+          \ 'OCAMLPATH': has_key(env, 'OCAMLPATH') ? env['OCAMLPATH'] : '',
+          \ 'OCAML_TOPLEVEL_PATH': has_key(env, 'OCAML_TOPLEVEL_PATH') ? env['OCAML_TOPLEVEL_PATH'] : '',
+          \ 'PATH': has_key(env, 'PATH') ? env['PATH'] : ''
+          \ }
+    let b:merlin_env = env
+    " Set the most recent merlin env in case we need some backup later.
+    let g:reasonml_most_recent_merlin_env = b:merlin_env
+    " Registers this buffer with merlin, will trigger the MerlinSelectBinary call.
     let res = merlin#Register()
   endif
   let b:finished_activating_buffer_successfully = 1

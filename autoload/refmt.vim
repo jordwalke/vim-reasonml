@@ -20,7 +20,7 @@ function! refmt#callRefmtProgram(inLines, ext, projectRoot, projectInfo)
     let res = console#Error("File is not in an esy project, refmt cannot be found.")
     return {}
   endif
-  let pathTo = esy#EsyLocateBinarySuperCached(g:reasonml_reason, a:projectRoot, a:projectInfo)
+  let pathTo = esy#EsyLocateBinaryCached(g:reasonml_reason, a:projectRoot, a:projectInfo)
   if pathTo == -1
     let res = console#Error("refmt not found. Open a .re file in a built esy project.")
     return {}
