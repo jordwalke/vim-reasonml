@@ -31,7 +31,6 @@ To enable syntastic support, add the following to your `~/.vimrc`:
 ```
 " If using vim-plug, install syntastic:
 Plug 'scrooloose/syntastic'
-let g:syntatic_reason = 1
 ```
 
 ## Merlin
@@ -50,6 +49,24 @@ let g:mucomplete#enable_auto_at_startup = 1
 let g:mucomplete#chains = {'default': ['omni']}
 ```
 
+
+## Airline Integration
+
+`vim-reason` includes an airline extension which show the project name of the
+current file (and project status) in an airline segment. Another included
+extension shows the current number of syntastic errors and warnings.
+
+```vim
+" Airline: Enable the airline extensions for esy project status and reason
+" syntastic plugin.
+let g:airline_extensions = ['esy', 'reason']
+let g:reasonml_project_airline=1
+let g:reasonml_syntastic_airline=1
+let g:reasonml_clean_project_airline=1
+let g:airline#extensions#whitespace#enabled = 0
+let g:airline_powerline_fonts = 1
+let g:airline_skip_empty_sections = 1
+```
 
 ## Neomake
 [Neomake](https://github.com/neomake/neomake) support can be enabled by setting

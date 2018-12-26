@@ -23,14 +23,18 @@ INTRODUCTION                                                       *reason-intro
 
 Plugin for developing Reason proejcts with Reason syntax and Merlin.
 
-You must have Merlin installed either as a `devDependency` of an
+You must have Merlin installed as a `devDependency` of an
 [`esy`](https://github.com/esy/esy) project.
 
 Recommended Config: >
-  " Airline
+  " Airline: Enable the airline extensions for esy project status and reason
+  " syntastic plugin.
+  let g:airline_extensions = ['tabline', 'esy', 'reason']
   let g:reasonml_project_airline=1
   let g:reasonml_syntastic_airline=1
+  " Unrelated to reason, but nice cleanup of the statusline.
   let g:reasonml_clean_project_airline=1
+  " Not necessary when using refmt!
   let g:airline#extensions#whitespace#enabled = 0
   let g:airline_powerline_fonts = 1
   let g:airline_skip_empty_sections = 1
