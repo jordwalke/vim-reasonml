@@ -148,7 +148,8 @@ here are their defaults.
 <
 
                                                                       *:EsyReset*
-* Resets the esy project cache in Vim. >
+* Resets the esy project cache in Vim. After running this you can call
+  reason#loadBuffer() and your buffer will be refreshsed with built deps. >
 
   :EsyReset
 <
@@ -159,7 +160,7 @@ here are their defaults.
   environment if you are not in a built esy project, or if you are in a buffer
   with no name/location. >
 
-  :EsyReset
+  :EsyExec my command
 <
 
                                                                        *:Console*

@@ -193,17 +193,17 @@ function! ReasonMaybeUseThisMerlinVimPluginForAllProjects(thisProjectsMerlinPath
   endif
 endfunction
 
-" This is how you customize merlin to allow you to create an environment
-" b:merlin_environment, as well as select a specific binary which may be
-" different from the one used to load plugin code.
-" By the time this returns you need to have set b:merlin_env (we have)
-" TODO: If some previous file's merlin binary had been used, and the current
-" does not have an esy project, then use the previous binary/environment.
-" This workflow is important for jumping to location into the standard library
-" because it won't have a project. There's no way you can prevent .ml files
-" from calling into this function and registering merlin (the stock merlin vim
-" plugin does the registering!) So might as well use some ocamlmerlin binary
-" instead of failing.
+" This is called every time b:merlin_path is empty/unlet when
+" merlin#Register() is called. We can set all the b:merlin_env/b:merlin_path
+" before calling merlin#Register(), but implementing MerlinSelectBinary will
+" give us a hook to implement some lookup if for some reason our code setting
+" those b: variables couldn't run. For example, if we opened the stdlib when
+" jupming to definition. An esy project wouldn't have been loaded, so we
+" couldn't set those variables, yet this function will still run. In that
+" case, we can use some fallback paths/envs etc.
+" There's no way you can prevent .ml files from calling into this function and
+" registering merlin (the stock merlin vim plugin does the registering!) So
+" might as well use some ocamlmerlin binary instead of failing.
 function! MerlinSelectBinary()
   let projectRoot = esy#FetchProjectRootCached()
   if !empty(projectRoot)

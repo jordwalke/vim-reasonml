@@ -134,6 +134,7 @@ endfunction
 
 " Used by other plugins to get the esy path. Do not break!
 function! esy#getEsyPath()
+  call esy#TrySetGlobalEsyBinaryOrWarn()
   return empty(g:reasonml_esy_discovered_path) ? "esy" : g:reasonml_esy_discovered_path
 endfunction
 
@@ -152,7 +153,7 @@ function! esy#FetchProjectInfoForProjectRoot(projectRoot)
     let ret = xolox#misc#os#exec({'command': cmd, 'check': 0})
     let statObj = s:jsonObjOr(ret, g:esy#errCantStatus)
     if esy#matchError(statObj, g:esy#errCantStatus)
-      if !b:did_warn_cant_status
+      if !exists('b:did_warn_cant_status') || !b:did_warn_cant_status
         call console#Error("Failed to call esy status on project")
         let b:did_warn_cant_status = 1
         return []
@@ -351,7 +352,8 @@ function! esy#ProjectCommandForProjectRoot(projectRoot, cmd)
   if empty(g:reasonml_esy_discovered_path)
     return "esy doesn't appear to be installed on your system. It's not in your global PATH probably."
   endif
-  let res = xolox#misc#os#exec({'command': 'esy ' . a:cmd, 'check': 0})
+  let cmd = esy#cdCommand(a:projectRoot, esy#getEsyPath() . ' ' . a:cmd)
+  let res = xolox#misc#os#exec({'command': cmd, 'check': 0})
   if res['exit_code'] == 0
     return esy#__FilterTermCodes(join(res['stdout'], "\n"))
   else
@@ -392,10 +394,18 @@ function! s:platformLocatorCommand(name)
   return s:is_win ? ('where ' . a:name) : ('which ' . a:name)
 endfunction
 
-" Error codes - all negative numbers.
+" Error codes:
+" =============
+" For checking result of esy global binary.
 let g:esy#errNoEsyBinary={'thisIsAnError': 1, 'code': 1}
 let g:esy#errVersionTooOld={'thisIsAnError': 1, 'code': 2}
 let g:esy#errCantStatus={'thisIsAnError': 1, 'code': 3}
+
+" Project loading/updating states.
+let g:esy#notValidEsyProject={'thisIsAnError': 1, 'code': 4}
+let g:esy#validEsyProjectNotReadyForDevelopment={'thisIsAnError': 1, 'code': 5}
+let g:esy#validEsyProjectReadyForDevelopmentButNoMerlin={'thisIsAnError': 1, 'code': 6}
+
 function! esy#isError(ret)
   return type(a:ret) == v:t_dict && has_key(a:ret, 'thisIsAnError')
 endfunction
@@ -460,13 +470,19 @@ endfunction
 function! esy#EsyLocateBinaryCached(name, projectRoot, projectInfo)
   let key = esy#GetCacheKeyProjectRoot(a:projectRoot)
   if has_key(g:esyLocatedBinaryByProjectRoot, key)
-    return g:esyLocatedBinaryByProjectRoot[key]
+    let binCache = g:esyLocatedBinaryByProjectRoot[key]
+  else
+    let binCache = {}
+    let g:esyLocatedBinaryByProjectRoot[key] = binCache
+  endif
+  if has_key(binCache, key)
+    return binCache[key]
   else
     if g:esyLogCacheMisses
       call console#Info("Cache miss locate binary (" . a:name . ") " . key)
     endif
     let ret = esy#EsyLocateBinary(a:name, a:projectRoot, a:projectInfo)
-    let g:esyLocatedBinaryByProjectRoot[key] = ret
+    let binCache[key] = ret
     return ret
   endif
 endfunction
@@ -495,7 +511,6 @@ endfunction
 function! esy#CmdEsyExec(cmd)
   let projectRoot = esy#FetchProjectRoot()
   let res = esy#ProjectExecForProjectRoot(projectRoot, a:cmd, '')
-  return esy#ProjectExecForProjectRoot(projectRoot, a:cmd, '')
   if res['exit_code'] == 0
     call console#Info(join(res['stdout'], "\n"))
   else
@@ -523,6 +538,14 @@ function! esy#CmdBuilds()
   let projectRoot = esy#FetchProjectRoot()
   return esy#ProjectCommandForProjectRoot(projectRoot, "ls-builds")
 endfunction
+
+" Built in esy commands such as esy ls-builds
+function! esy#CmdStatus()
+  let projectRoot = esy#FetchProjectRoot()
+  call console#Info(projectRoot)
+  return esy#ProjectCommandForProjectRoot(projectRoot, "status")
+endfunction
+
 
 function! esy#CmdEsyModules()
   let projectRoot = esy#FetchProjectRoot()
