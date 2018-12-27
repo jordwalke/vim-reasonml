@@ -82,7 +82,7 @@ endfunction
 " First we define an init function that will be invoked from extensions.vim
 function! airline#extensions#reason#init(ext)
 
-  let doSyntasticAirline = exists(':SyntasticCheck') && exists('g:vimreason_syntastic_airline') && g:vimreason_syntastic_airline==1
+  let doSyntasticAirline = exists(':SyntasticCheck') && exists('g:reasonml_syntastic_airline') && g:reasonml_syntastic_airline==1
   if doSyntasticAirline
       " I think that using syntastic-err/warn instead of using the original
       " method of making a new part name, causes it to be truncated at < 80
@@ -105,7 +105,7 @@ endfunction
 
 " This function will be invoked just prior to the statusline getting modified.
 function! airline#extensions#reason#apply(...)
-  let doSyntasticAirline = exists(':SyntasticCheck') && exists('g:vimreason_syntastic_airline') && g:vimreason_syntastic_airline==1
+  let doSyntasticAirline = exists(':SyntasticCheck') && exists('g:reasonml_syntastic_airline') && g:reasonml_syntastic_airline==1
   if doSyntasticAirline
     " I have no idea why, but this is what the example.vim has for airline.
     " Appending to a w: variable. It's copied from the example.
