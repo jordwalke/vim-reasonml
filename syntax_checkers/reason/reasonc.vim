@@ -51,7 +51,9 @@ function! SyntaxCheckers_reason_merlin_GetLocList()
         let bufnr = bufnr('%')
         let inLines = getline(1,'$')
         let ext = match(expand("%"), "\\.rei$") == -1 ? ".re" : ".rei"
-        let out = refmt#callRefmtProgram(inLines, ext)
+        let projectRoot = esy#FetchProjectRootCached()
+        let projectInfo = esy#FetchProjectInfoForProjectRootCached(projectRoot)
+        let out = refmt#callRefmtProgram(inLines, ext, projectRoot, projectInfo)
         if out['exit_code'] != 0
           let stderr = join(out['stderr'], "   ")
           let compilerSyntaxError = refmt#extractCompilerSyntaxErr(stderr)
