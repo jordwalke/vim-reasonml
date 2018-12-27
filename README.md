@@ -1,18 +1,38 @@
 vim-reasonml:
 =========================================
 
-**vim-reasonml: Native development with `esy` and Merlin**
+**Native Reason development with `esy` and Merlin**
 
-<img width="648px" height="432px" src="./doc/screenshot.png" />
+<img width="374px" height="374px" src="./doc/vim-reasonml.png" />
+
+
+`vim-reasonml` provides vim IDE features for **native** Reason projects that
+use [esy](https://esy.sh) and `merlin`.
+
+## Features:
+
+- Automatically loads Merlin plugin from your esy `devDependencies`.
+- Merlin autocomplete, goto-location, type-at-cursor features (provided by merlin)
+- Airline integration for esy projects and compilation errors.
+- `:ReasonPrettyPrint` with enhanced syntax error locations.
+- Reason syntax highlighting and Dune build config syntax highlighting.
+- Highlighting of esy `#{build variables}` in `.json` files.
+- Preliminary Windows support with `esy` Windows.
+
+See [The vim-reasonml Plugin Documentation](./doc/vim-reasonml.txt).
+
+<img width="663px" height="536px" src="./doc/screenshot.png" />
+
 
 ## Install
 
 - `npm install -g esy`
-- Create a project with `@opam/merlin` as a `devDependency`.
-You can fork [hello-reason](https://github.com/esy-ocaml/hello-reason) to get started.
-- `esy intsall && esy build` as you normally would.
-- Add this plugin to your Vim (for example if you use
-  [`vim-plug`](https://github.com/junegunn/vim-plug), then add `Plug 'jordwalke/vim-reason'` to your `~/.vimrc`)
+- Install `vim-reasonml` with your vim plugin manager. If using
+  [`vim-plug`](https://github.com/junegunn/vim-plug) add `Plug 'jordwalke/vim-reasonml`
+  to your `~/.vimrc`)
+- Create a project with `@opam/merlin` as a `devDependency`. You can fork
+  [hello-reason](https://github.com/esy-ocaml/hello-reason) to get started.
+- `esy install && esy build` as you normally would.
 - Open a `.re` file from the project in Vim.
 
 
@@ -25,13 +45,16 @@ available on your `PATH`.  Add a keyboard mapping shortcut like this:
 autocmd FileType reason map <buffer> <D-C> :ReasonPrettyPrint<Cr>
 ```
 
-## Syntastic Support
-To enable syntastic support, add the following to your `~/.vimrc`:
+## Error/Warning Highlighting:
+- To enable syntastic support, add the following to your `~/.vimrc`:
 
 ```
 " If using vim-plug, install syntastic:
 Plug 'scrooloose/syntastic'
 ```
+
+- [Neomake](https://github.com/neomake/neomake) support can be enabled by setting
+`let g:neomake_reason_enabled_makers = ['merlin']`.
 
 ## Merlin
 
@@ -52,7 +75,7 @@ let g:mucomplete#chains = {'default': ['omni']}
 
 ## Airline Integration
 
-`vim-reason` includes an airline extension which show the project name of the
+`vim-reasonml` includes an airline extension which show the project name of the
 current file (and project status) in an airline segment. Another included
 extension shows the current number of syntastic errors and warnings.
 
@@ -68,22 +91,7 @@ let g:airline_powerline_fonts = 1
 let g:airline_skip_empty_sections = 1
 ```
 
-## Neomake
-[Neomake](https://github.com/neomake/neomake) support can be enabled by setting
-`let g:neomake_reason_enabled_makers = ['merlin']`.
-
-## Changes:
-
-**12/21/2018**
-- Now all config settings are prefixed with `g:reasonml_` instead of
-  `g:vimreason_`.
-
-
 
 ## LICENSE
 
-Some files from vim-reason are based on the Rust vim plugin and so we are including that license.
-
-
-
-See [The reason-vim Plugin Documentation](./doc/vim-reason.txt).
+Some files from vim-reasonml are based on the Rust vim plugin and so we are including that license.
