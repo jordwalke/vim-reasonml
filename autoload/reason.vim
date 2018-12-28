@@ -68,4 +68,5 @@ function! reason#LoadBuffer()
     call console#Warn("Could not find merlin support. Is it listed in your devDependencies?")
     return 0
   endif
+  return res
 endfunction
