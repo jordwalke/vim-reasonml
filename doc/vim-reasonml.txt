@@ -148,8 +148,12 @@ here are their defaults.
 <
 
                                                                       *:EsyReset*
-* Resets the esy project cache in Vim. After running this you can call
-  reason#loadBuffer() and your buffer will be refreshsed with built deps. >
+* Resets the esy project cache in Vim and reloads the current buffer.
+  After making changes to your project's package.json file, you can continue
+  editing in the old environment but if you want the new changes to be
+  visible in vim without restarting vim, run :EsyReset. For example, you
+  could upgrade merlin in your package.json, then run :EsyReset in each
+  existing/open Reason buffer. You will then see the new merlin. >
 
   :EsyReset
 <

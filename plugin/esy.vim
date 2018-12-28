@@ -22,12 +22,13 @@ let g:esyLocatedBinaryByProjectRoot={}
 let g:esyEnvCacheByProjectRoot={}
 
 
-command! -nargs=0 EsyFetchProjectInfo :echo esy#CmdFetchProjectInfo()
-command! -nargs=0 EsyReset :echo esy#CmdResetEditorCache()
-command! -nargs=1 EsyExec call esy#CmdEsyExec(<q-args>)
-command! -nargs=0 EsyBuilds :echo esy#CmdBuilds()
-command! -nargs=0 EsyStatus :echo esy#CmdStatus()
-command! -nargs=0 EsyLibs :echo esy#CmdEsyLibs()
-command! -nargs=0 EsyModules :echo esy#CmdEsyModules()
-command! -nargs=0 EsyHelp :echo esy#CmdEsyHelp()
-command! -nargs=0 EsyRecentError call esy#CmdEsyRecentError()
+command! -nargs=0 EsyFetchProjectInfo :call esy#CmdFetchProjectInfo()
+command! -nargs=0 EsyReset :call esy#CmdResetCacheAndReloadBuffer()
+command! -nargs=1 EsyExec :call esy#CmdEsyExec(<q-args>)
+command! -nargs=0 EsyBuilds :call esy#CmdBuilds()
+command! -nargs=0 EsyStatus :call esy#CmdStatus()
+command! -nargs=0 EsyLibs :call esy#CmdEsyLibs()
+command! -nargs=0 EsyModules :call esy#CmdEsyModules()
+command! -nargs=0 EsyHelp :call esy#CmdEsyHelp()
+" Name this funny to prevent it polluting autocomple.
+command! -nargs=0 EsyPleaseShowMostRecentError :call esy#CmdEsyPleaseShowMostRecentError()

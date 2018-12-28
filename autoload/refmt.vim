@@ -15,12 +15,8 @@ function! refmt#extractCompilerSyntaxErr(text)
   endif
 endfunction
 
-function! refmt#callRefmtProgram(inLines, ext, projectRoot, projectInfo)
-  if empty(a:projectRoot)
-    let res = console#Error("File is not in an esy project, refmt cannot be found.")
-    return {}
-  endif
-  let pathTo = esy#EsyLocateBinaryCached(g:reasonml_reason, a:projectRoot, a:projectInfo)
+function! refmt#callRefmtProgramForReadyProject(inLines, ext, projectRoot, projectInfo)
+  let pathTo = esy#EsyLocateBinaryForReadyProjectCached(g:reasonml_reason, a:projectRoot, a:projectInfo)
   if pathTo == -1
     let res = console#Error("refmt not found. Open a .re file in a built esy project.")
     return {}
@@ -50,7 +46,10 @@ function! refmt#Refmt(...)
   let ext = match(expand("%"), "\\.rei$") == -1 ? ".re" : ".rei"
   let projectRoot = esy#FetchProjectRootCached()
   let projectInfo = esy#FetchProjectInfoForProjectRootCached(projectRoot)
-  let out = refmt#callRefmtProgram(inLines, ext, projectRoot, projectInfo)
+  if !esy#UserValidateIsReadyProject(projectRoot, projectInfo, "run refmt")
+    return 0
+  endif
+  let out = refmt#callRefmtProgramForReadyProject(inLines, ext, projectRoot, projectInfo)
   " Already handled refmt being gone
   if empty(out)
     return 0

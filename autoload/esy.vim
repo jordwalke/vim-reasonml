@@ -185,7 +185,12 @@ endfunction
 
 " Only Use For Debugging!
 function! esy#CmdFetchProjectInfo()
-  return esy#FetchProjectInfoForProjectRoot(esy#FetchProjectRoot())
+  let projectRoot = esy#FetchProjectRoot()
+  let projectInfo = esy#FetchProjectInfoForProjectRoot(projectRoot)
+  if esy#UserValidateIsReadyProject(projectRoot, projectInfo, "fetch project info")
+    " Otherwise errors would have been logged already
+    call console#info(projectInfo)
+  endif
 endfunction
 
 function! esy#UpdateLastError(ret)
@@ -277,12 +282,17 @@ function! esy#FetchProjectInfoForProjectRootCached(projectRoot)
   endif
 endfunction
 
-function! esy#CmdResetEditorCache()
+function! esy#CmdResetCacheAndReloadBuffer()
   let g:esyProjectRootCacheByBuffer={}
   let g:esyProjectInfoCacheByProjectRoot={}
   let g:esyLocatedBinaryByProjectRoot={}
   let g:esyEnvCacheByProjectRoot={}
-  return "Reset editor cache"
+  if &filetype=="reason" || &filetype=="ocaml"
+    call reason#LoadBuffer()
+    call console#Info("Reset editor cache and reloaded current buffer")
+  else
+    call console#Info("Reset editor cache. Now reload individual buffers")
+  endif
 endfunction
 
 
@@ -299,7 +309,7 @@ function! esy#TrySetGlobalEsyBinaryOrWarn()
       if !g:did_warn_no_esy_yet
         let msg = esy#matchError(res, g:esy#errVersionTooOld) ? 'Your esy version is too old. Upgrade to the latest esy.' : 'Cannot locate globally installed esy binary - install with npm install -g esy.'
         let g:did_warn_no_esy_yet = 1
-        call console#Warn(msg)
+        call console#Error(msg)
       endif
       let g:reasonml_esy_discovered_path=""
     else
@@ -313,25 +323,44 @@ function! esy#cdCommand(projectRoot, cmd)
   return osChangeDir.' '.a:cmd
 endfunction
 
-" TODO: Make all dependencies explicit inputs to this so we don't have to
-" constantly recheck arguments everywhere. (g:esy#EsyLocateBinary)
-function! esy#ProjectExecForProjectRoot(projectRoot, cmd, input)
-  if a:projectRoot == [] || empty(g:reasonml_esy_discovered_path)
-    let msg = (a:projectRoot == []) ? 'Attempting to invoke Esy project command on non esy project. ' : ''
-    let msg = msg . (empty(g:reasonml_esy_discovered_path) ? 'esy does not appear to be installed on your system. It is not on your global PATH perhaps' : '')
+" Call from workflows initiated by user action (describe the action in
+" a:verbDescription). For example, this is the validation you'd use if a user
+" run `:EsyExec` or `:ReasonPrettyPrint` etc.
+function! esy#UserValidateIsReadyProject(projectRoot, projectInfo, verbDescription)
+  if empty(a:projectRoot) || empty(g:reasonml_esy_discovered_path)
+    let msg = (a:projectRoot == []) ? 'Cannot ' . a:verbDescription . ' on non esy project. ' : 'Cannot ' . a:verbDescription . ' because '
+    let msg = msg . (empty(g:reasonml_esy_discovered_path) ? 'esy does not appear to be installed on your system. Is it in your global PATH?' : '')
     call console#Error(msg)
-    return -1
+    return 0
+  endif
+  if empty(a:projectInfo)
+    call console#Error("Cannot " . a:verbDescription . " without a esy installed")
+    return 0
+  endif
+  let projectStatus = esy#ProjectStatusOfProjectInfo(a:projectInfo)
+  if empty(projectStatus) || !projectStatus['isProject']
+    call console#Error("Cannot " . a:verbDescription . " - not a valid esy project at " . projectRoot[0])
+    return 0
+  endif 
+  if (!projectStatus['isProjectReadyForDev'])
+    call console#Error("Cannot " . a:verbDescription . " until you run esy at " . a:projectRoot[0])
+    return 0
   else
-    if empty(g:reasonml_esy_discovered_path)
-      call console#Error("Running command " . a:cmd . " without an esy")
-    endif
-    let projectInfo = esy#FetchProjectInfoForProjectRoot(a:projectRoot)
-    let projectStatus = esy#ProjectStatusOfProjectInfo(projectInfo)
-    if (!projectStatus['isProjectReadyForDev'])
-      throw "called esy#FetchProjectInfoForProjectRoot on a project not installed and built " . a:projectRoot[0]
-    else
-      let ret = xolox#misc#os#exec({'command': esy#cdCommand(a:projectRoot, g:reasonml_esy_discovered_path.' '.a:cmd), 'stdin': a:input, 'check': 0})
-    endif
+    return 1
+  endif
+endfunction
+
+" Executes a shell command in a prepared project or fails if the project is
+" not ready.
+" Requires that all inputs already be valid and represent a known, prepared
+" project.
+function! esy#ProjectExecForReadyProject(projectRoot, projectInfo, cmd, input)
+  let projectStatus = esy#ProjectStatusOfProjectInfo(a:projectInfo)
+  " This should never happen. If so it's a bug in the plugin.
+  if (!projectStatus['isProjectReadyForDev'])
+    throw "called esy#FetchProjectInfoForProjectRoot on a project not installed and built " . a:projectRoot[0]
+  else
+    let ret = xolox#misc#os#exec({'command': esy#cdCommand(a:projectRoot, g:reasonml_esy_discovered_path.' '.a:cmd), 'stdin': a:input, 'check': 0})
   endif
   if ret['exit_code'] != 0
     call esy#UpdateLastError(ret)
@@ -344,18 +373,21 @@ function! esy#__FilterTermCodes(str)
   return substitute(a:str, "[[0-9]*m", "", "g")
 endfunction
 
-" Built in esy commands such as esy ls-builds
+" Built in esy commands such as esy ls-builds that we expose as `:EsyFoo` use
+" this. These commands don't require that the project be completely ready.
 function! esy#ProjectCommandForProjectRoot(projectRoot, cmd)
-  if a:projectRoot == []
-    return "You are not in an esy project. Open a file in an esy project, or cd to one."
-  endif
   if empty(g:reasonml_esy_discovered_path)
-    return "esy doesn't appear to be installed on your system. It's not in your global PATH probably."
+    call console#Error("esy doesn't appear to be installed on your system. Is it in your global PATH?")
+    return
+  endif
+  if a:projectRoot == []
+    call console#Error("You are not in an esy project. Open a file in an esy project, or cd to one.")
+    return
   endif
   let cmd = esy#cdCommand(a:projectRoot, esy#getEsyPath() . ' ' . a:cmd)
   let res = xolox#misc#os#exec({'command': cmd, 'check': 0})
   if res['exit_code'] == 0
-    return esy#__FilterTermCodes(join(res['stdout'], "\n"))
+    call console#Info(esy#__FilterTermCodes(join(res['stdout'], "\n")))
   else
     call esy#UpdateLastError(res)
     if has_key(res, 'command') && type(res) == v:t_list
@@ -367,7 +399,7 @@ function! esy#ProjectCommandForProjectRoot(projectRoot, cmd)
         let g:esy_last_failed_cmd = 'not-recorded'
       endif
     endif
-    return "Command failed: " . a:cmd . " - Troubleshoot :EsyRecentError"
+    call console#Error("Command failed: " . a:cmd . " - Troubleshoot :EsyRecentError")
   endif
 endfunction
 
@@ -381,13 +413,6 @@ function! esy#ProjectName()
     let projectInfo= esy#FetchProjectInfoForProjectRoot(projectRoot)
     return esy#ProjectNameOfProjectInfo(projectInfo)
   endif
-endfunction
-
-" TOOD: Clean up a lot of this stuff with optional args:
-" https://vi.stackexchange.com/a/11548
-function! esy#ProjectExec(cmd)
-  let projectRoot = esy#FetchProjectRoot()
-  return esy#ProjectExecForProjectRoot(projectRoot, a:cmd, '')
 endfunction
 
 function! s:platformLocatorCommand(name)
@@ -455,9 +480,10 @@ endfunction
 " possible.
 " This should probably be added to xolox's shell libary.
 " Returns -1 if missing because people would misuse a return value of zero.
-function! esy#EsyLocateBinary(name, projectRoot, projectInfo)
+" Note: Requires that the project be "ready" for development.
+function! esy#EsyLocateBinaryForReadyProject(name, projectRoot, projectInfo)
   let cmd = s:platformLocatorCommand(a:name)
-  let res = esy#ProjectExecForProjectRoot(a:projectRoot, cmd, '')
+  let res = esy#ProjectExecForReadyProject(a:projectRoot, a:projectInfo, cmd, '')
   return s:resultFirstLineOr(res, -1)
 endfunction
 
@@ -467,7 +493,8 @@ endfunction
 " unbuilt project, then once the project is built, it isn't refetched.
 " Something should reset all caches when a project transitions from unbuilt to
 " built.
-function! esy#EsyLocateBinaryCached(name, projectRoot, projectInfo)
+" Note: Requires that the project be "ready" for development.
+function! esy#EsyLocateBinaryForReadyProjectCached(name, projectRoot, projectInfo)
   let key = esy#GetCacheKeyProjectRoot(a:projectRoot)
   if has_key(g:esyLocatedBinaryByProjectRoot, key)
     let binCache = g:esyLocatedBinaryByProjectRoot[key]
@@ -481,7 +508,7 @@ function! esy#EsyLocateBinaryCached(name, projectRoot, projectInfo)
     if g:esyLogCacheMisses
       call console#Info("Cache miss locate binary (" . a:name . ") " . key)
     endif
-    let ret = esy#EsyLocateBinary(a:name, a:projectRoot, a:projectInfo)
+    let ret = esy#EsyLocateBinaryForReadyProject(a:name, a:projectRoot, a:projectInfo)
     let binCache[key] = ret
     return ret
   endif
@@ -510,21 +537,24 @@ endfunction
 " #choppingblock
 function! esy#CmdEsyExec(cmd)
   let projectRoot = esy#FetchProjectRoot()
-  let res = esy#ProjectExecForProjectRoot(projectRoot, a:cmd, '')
-  if res['exit_code'] == 0
-    call console#Info(join(res['stdout'], "\n"))
-  else
-    call console#Error(join(res['stderr'], "\n"))
+  let projectInfo = esy#FetchProjectInfoForProjectRoot(projectRoot)
+  if esy#UserValidateIsReadyProject(projectRoot, projectInfo, "execute command")
+    let res = esy#ProjectExecForReadyProject(projectRoot, projectInfo, a:cmd, '')
+    if res['exit_code'] == 0
+      call console#Info(join(res['stdout'], "\n"))
+    else
+      call console#Error(join(res['stderr'], "\n"))
+    endif
   endif
 endfunction
 
-function! esy#CmdEsyRecentError()
+function! esy#CmdEsyPleaseShowMostRecentError()
   let str = [
         \ "[stderr]: " . g:esy_last_failed_stderr,
         \ "[stdout]: " . g:esy_last_failed_stdout,
         \ "[command]: " . g:esy_last_failed_cmd
         \ ]
-  echomsg join(str, " ")
+  call console#Info(join(str, " "))
 endfunction
 
 " Built in esy commands such as esy ls-builds
@@ -536,25 +566,24 @@ endfunction
 " Built in esy commands such as esy ls-builds
 function! esy#CmdBuilds()
   let projectRoot = esy#FetchProjectRoot()
-  return esy#ProjectCommandForProjectRoot(projectRoot, "ls-builds")
+  call esy#ProjectCommandForProjectRoot(projectRoot, "ls-builds")
 endfunction
 
 " Built in esy commands such as esy ls-builds
 function! esy#CmdStatus()
   let projectRoot = esy#FetchProjectRoot()
-  call console#Info(projectRoot)
-  return esy#ProjectCommandForProjectRoot(projectRoot, "status")
+  call esy#ProjectCommandForProjectRoot(projectRoot, "status")
 endfunction
 
 
 function! esy#CmdEsyModules()
   let projectRoot = esy#FetchProjectRoot()
-  return esy#ProjectCommandForProjectRoot(projectRoot, "ls-modules")
+  call esy#ProjectCommandForProjectRoot(projectRoot, "ls-modules")
 endfunction
 
 
 " Should render dynamic help based on the current project
 " settings/config/state.
 function! esy#CmdEsyHelp()
-  return "Run :help vim-reason for help using esy from within vim"
+  call console#Info("Run :help vim-reasonml for help using esy from within vim")
 endfunction

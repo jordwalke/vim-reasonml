@@ -12,16 +12,20 @@ function! airline#extensions#esy#GetEsyProjectStatus()
     if (projectInfo == [] || !esy#ProjectStatusOfProjectInfo(projectInfo)['isProject'])
       return ''
     else
-      let status = esy#ProjectStatusOfProjectInfo(projectInfo)
-      let l:displayStatus =  " [not installed]"
-      if status['isProjectSolved']
-        let l:displayStatus = " [not installed]"
-      endif
-      if status['isProjectFetched']
-        let l:displayStatus = " [not built]"
-      endif
-      if status['isProjectReadyForDev']
-        let l:displayStatus = ""
+      if empty(g:reasonml_esy_discovered_path)
+        let l:displayStatus = '[missing esy]'
+      else
+        let status = esy#ProjectStatusOfProjectInfo(projectInfo)
+        let l:displayStatus =  " [not installed]"
+        if status['isProjectSolved']
+          let l:displayStatus = " [not installed]"
+        endif
+        if status['isProjectFetched']
+          let l:displayStatus = " [not built]"
+        endif
+        if status['isProjectReadyForDev']
+          let l:displayStatus = ""
+        endif
       endif
       return esy#ProjectNameOfProjectInfo(l:projectInfo) . l:displayStatus . g:airline_symbols.space . g:airline_right_alt_sep . g:airline_symbols.space
     endif
