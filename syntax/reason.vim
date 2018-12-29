@@ -191,7 +191,7 @@ hi def link reasonCharacter     Character
 hi def link reasonNumber        Number
 hi def link reasonBoolean       Boolean
 hi def link reasonEnum          reasonType
-hi def link reasonConstructor   Function
+hi def link reasonConstructor   Constant
 hi def link reasonModPath       Include
 hi def link reasonConstant      Constant
 hi def link reasonSelf          Constant
