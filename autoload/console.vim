@@ -271,7 +271,7 @@ function! console#ShortHl(prefix, hl, msg)
   set shortmess+=T
   let typ1 = type(a:msg)
   let msg = a:msg
-  if typ1 != v:t_string
+  if typ1 != g:v_t_string
     let msg = string(msg)
   endif
   let cols = &columns

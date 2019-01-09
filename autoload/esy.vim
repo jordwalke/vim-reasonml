@@ -390,10 +390,10 @@ function! esy#ProjectCommandForProjectRoot(projectRoot, cmd)
     call console#Info(esy#__FilterTermCodes(join(res['stdout'], "\n")))
   else
     call esy#UpdateLastError(res)
-    if has_key(res, 'command') && type(res) == v:t_list
+    if has_key(res, 'command') && type(res) == g:v_t_list
       let g:esy_last_failed_cmd = join(res['command'], "\n")
     else
-      if has_key(res, 'command') && type(res) == v:t_string
+      if has_key(res, 'command') && type(res) == g:v_t_string
         let g:esy_last_failed_cmd = res['command']
       else
         let g:esy_last_failed_cmd = 'not-recorded'
@@ -432,11 +432,11 @@ let g:esy#validEsyProjectNotReadyForDevelopment={'thisIsAnError': 1, 'code': 5}
 let g:esy#validEsyProjectReadyForDevelopmentButNoMerlin={'thisIsAnError': 1, 'code': 6}
 
 function! esy#isError(ret)
-  return type(a:ret) == v:t_dict && has_key(a:ret, 'thisIsAnError')
+  return type(a:ret) == g:v_t_dict && has_key(a:ret, 'thisIsAnError')
 endfunction
 
 function! esy#matchError(ret, err)
-  return type(a:err) == v:t_dict && has_key(a:err, 'thisIsAnError') && type(a:ret) == v:t_dict && has_key(a:ret, 'thisIsAnError') && a:ret['code'] == a:err['code']
+  return type(a:err) == g:v_t_dict && has_key(a:err, 'thisIsAnError') && type(a:ret) == g:v_t_dict && has_key(a:ret, 'thisIsAnError') && a:ret['code'] == a:err['code']
 endfunction
 
 " Locates the esy binary with optional user override. Uses the platform's
