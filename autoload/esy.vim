@@ -5,7 +5,6 @@ endfunction
 let g:esy_last_failed_stderr = ""
 let g:esy_last_failed_stdout = ""
 let g:esy_last_failed_cmd = ""
-let g:did_warn_no_esy_yet = 0
 
 function! esy#trunc(s, len)
   if len(a:s) < a:len || len(a:s) == a:len
@@ -132,10 +131,79 @@ function! esy#FetchProjectRoot()
   return []
 endfunction
 
+function! esy#FetchLocalEsyBinaryLoc(projectRoot)
+  if a:projectRoot == []
+    return -1
+  endif
+  let localEsyPath = resolve(a:projectRoot[0] . "/esy")
+  let isExecutable = executable(localEsyPath)
+  if isExecutable
+    return localEsyPath
+  else
+    return -1
+  endif
+endfunction
+
+
+" Checks a local esy version at least _once_. It's too slow to do this
+" all the time, so hopefully once is enough.
+function! esy#SetLocalEsyIfNecessary(projectRoot)
+  if !exists('b:reasonml_local_esy_checked') || !b:reasonml_local_esy_checked
+    " We'll retry the global binary just in case they upgraded / installed it
+    " since last time they opened a buffer. We won't recheck again in the event
+    " they downgrade to an invalid version though.
+    let ret = esy#FetchLocalEsyBinaryLoc(a:projectRoot)
+    if ret != -1
+      let b:reasonml_esy_discovered_path = ret
+      let b:reasonml_esy_discovered_version = esy#FetchVersion(ret)
+    else
+      let b:reasonml_esy_discovered_path = ''
+      let b:reasonml_esy_discovered_version = {}
+    endif
+  endif
+  let b:reasonml_local_esy_checked = 1
+endfunction
+
+function! esy#SetGlobalEsy()
+  if empty(g:reasonml_esy_discovered_path) || !esy#IsVersionValidAndNewEnough(g:reasonml_esy_discovered_version)
+    " We'll retry the global binary just in case they upgraded / installed it
+    " since last time they opened a buffer. We won't recheck again in the event
+    " they downgrade to an invalid version though.
+    let ret = esy#FetchGlobalEsyBinaryLoc()
+    if ret != -1
+      let g:reasonml_esy_discovered_path = ret
+      let g:reasonml_esy_discovered_version = esy#FetchVersion(ret)
+    else
+      let g:reasonml_esy_discovered_path = ''
+      let g:reasonml_esy_discovered_version = {}
+    endif
+  endif
+endfunction
+
+
 " Used by other plugins to get the esy path. Do not break!
-function! esy#getEsyPath()
-  call esy#TrySetGlobalEsyBinaryOrWarn()
-  return empty(g:reasonml_esy_discovered_path) ? "esy" : g:reasonml_esy_discovered_path
+function! esy#getBestEsyPathForProject(projectRoot)
+  call esy#SetLocalEsyIfNecessary(a:projectRoot)
+  if !empty(b:reasonml_esy_discovered_path) && esy#IsVersionValidAndNewEnough(b:reasonml_esy_discovered_version)
+    return b:reasonml_esy_discovered_path
+  elseif !empty(g:reasonml_esy_discovered_path) && esy#IsVersionValidAndNewEnough(g:reasonml_esy_discovered_version)
+    return g:reasonml_esy_discovered_path
+  else
+    return ""
+  endif
+endfunction
+
+
+function! esy#WarnAboutMissingEsy()
+  if !g:did_warn_no_esy_yet
+    if !empty(b:reasonml_esy_discovered_path) && !esy#IsVersionValidAndNewEnough(b:reasonml_esy_discovered_path)
+      call console#Error("The local project's esy needs to be updated to the latest esy:" . b:reasonml_esy_discovered_version)
+      let g:did_warn_no_esy_yet = 1
+    elseif !empty(g:reasonml_esy_discovered_path) && !esy#IsVersionValidAndNewEnough(g:reasonml_esy_discovered_version)
+      call console#Error("The global esy needs to be updated to the latest esy:" . g:reasonml_esy_discovered_path)
+      let g:did_warn_no_esy_yet = 1
+    endif
+  endif
 endfunction
 
 "
@@ -145,14 +213,18 @@ endfunction
 " [projectName, packageText, projectStatus, projectRoot].
 " projectStatus is the result of esy status
 "
+
+" esy#FetchProjectInfoForProjectRoot allows projects to include a symlink to
+" their prefered version of esy in their project root.
 function! esy#FetchProjectInfoForProjectRoot(projectRoot)
   if a:projectRoot == []
     return []
   else
-    let cmd = esy#cdCommand(a:projectRoot, esy#getEsyPath() . ' status')
+    let cmd = esy#cdCommand(a:projectRoot, esy#getBestEsyPathForProject(a:projectRoot) . ' status')
     let ret = xolox#misc#os#exec({'command': cmd, 'check': 0})
     let statObj = s:jsonObjOr(ret, g:esy#errCantStatus)
     if esy#matchError(statObj, g:esy#errCantStatus)
+      call esy#UpdateLastError(ret)
       if !exists('b:did_warn_cant_status') || !b:did_warn_cant_status
         call console#Error("Failed to call esy status on project")
         let b:did_warn_cant_status = 1
@@ -189,7 +261,7 @@ function! esy#CmdFetchProjectInfo()
   let projectInfo = esy#FetchProjectInfoForProjectRoot(projectRoot)
   if esy#UserValidateIsReadyProject(projectRoot, projectInfo, "fetch project info")
     " Otherwise errors would have been logged already
-    call console#info(projectInfo)
+    call console#Info(projectInfo)
   endif
 endfunction
 
@@ -302,20 +374,12 @@ endfunction
 " perform them every once in a while, on demand etc.
 " ======================================================================
 
-function! esy#TrySetGlobalEsyBinaryOrWarn()
-  if empty(g:reasonml_esy_discovered_path)
-    let res = esy#LocateEsyBinary(g:reasonml_esy_path)
-    if esy#isError(res)
-      if !g:did_warn_no_esy_yet
-        let msg = esy#matchError(res, g:esy#errVersionTooOld) ? 'Your esy version is too old. Upgrade to the latest esy.' : 'Cannot locate globally installed esy binary - install with npm install -g esy.'
-        let g:did_warn_no_esy_yet = 1
-        call console#Error(msg)
-      endif
-      let g:reasonml_esy_discovered_path=""
-    else
-      let g:reasonml_esy_discovered_path = res
-    endif
-  endif
+" Locates the esy binary. Uses the platform's default executable system (on
+" windows, that's cmd.exe and `where`') within the current esy project if
+" possible.  Returns g:esy#err codes as above.
+function! esy#FetchGlobalEsyBinaryLoc()
+  let binLoc = xolox#misc#os#exec({'command': s:platformLocatorCommand("esy"), 'check': 0})
+  return s:resultFirstLineOr(binLoc, -1)
 endfunction
 
 function! esy#cdCommand(projectRoot, cmd)
@@ -341,7 +405,7 @@ function! esy#UserValidateIsReadyProject(projectRoot, projectInfo, verbDescripti
   if empty(projectStatus) || !projectStatus['isProject']
     call console#Error("Cannot " . a:verbDescription . " - not a valid esy project at " . projectRoot[0])
     return 0
-  endif 
+  endif
   if (!projectStatus['isProjectReadyForDev'])
     call console#Error("Cannot " . a:verbDescription . " until you run esy at " . a:projectRoot[0])
     return 0
@@ -376,7 +440,8 @@ endfunction
 " Built in esy commands such as esy ls-builds that we expose as `:EsyFoo` use
 " this. These commands don't require that the project be completely ready.
 function! esy#ProjectCommandForProjectRoot(projectRoot, cmd)
-  if empty(g:reasonml_esy_discovered_path)
+  let esyPath = esy#getBestEsyPathForProject(a:projectRoot)
+  if empty(esyPath)
     call console#Error("esy doesn't appear to be installed on your system. Is it in your global PATH?")
     return
   endif
@@ -384,7 +449,7 @@ function! esy#ProjectCommandForProjectRoot(projectRoot, cmd)
     call console#Error("You are not in an esy project. Open a file in an esy project, or cd to one.")
     return
   endif
-  let cmd = esy#cdCommand(a:projectRoot, esy#getEsyPath() . ' ' . a:cmd)
+  let cmd = esy#cdCommand(a:projectRoot, esyPath . ' ' . a:cmd)
   let res = xolox#misc#os#exec({'command': cmd, 'check': 0})
   if res['exit_code'] == 0
     call console#Info(esy#__FilterTermCodes(join(res['stdout'], "\n")))
@@ -400,18 +465,6 @@ function! esy#ProjectCommandForProjectRoot(projectRoot, cmd)
       endif
     endif
     call console#Error("Command failed: " . a:cmd . " - Troubleshoot :EsyRecentError")
-  endif
-endfunction
-
-
-" Return empty string if not a valid esy project (malformed JSON etc). Returns
-" "unnamed" if not named. Else the project name.
-function! esy#ProjectName()
-  let projectRoot = esy#FetchProjectRoot()
-  if projectRoot == []
-  else
-    let projectInfo= esy#FetchProjectInfoForProjectRoot(projectRoot)
-    return esy#ProjectNameOfProjectInfo(projectInfo)
   endif
 endfunction
 
@@ -439,41 +492,36 @@ function! esy#matchError(ret, err)
   return type(a:err) == g:v_t_dict && has_key(a:err, 'thisIsAnError') && type(a:ret) == g:v_t_dict && has_key(a:ret, 'thisIsAnError') && a:ret['code'] == a:err['code']
 endfunction
 
-" Locates the esy binary with optional user override. Uses the platform's
-" default executable system (on windows, that's cmd.exe and `where`') within
-" the current esy project if possible.
-" Returns g:esy#err codes as above.
-function! esy#LocateEsyBinary(override)
-  if empty(a:override)
-    let binLoc = xolox#misc#os#exec({'command': s:platformLocatorCommand("esy"), 'check': 0})
-    let binLoc = s:resultFirstLineOr(binLoc, g:esy#errNoEsyBinary)
-    if esy#matchError(binLoc, g:esy#errNoEsyBinary)
-      return g:esy#errNoEsyBinary
-    endif
-  else
-    let binLoc = a:override
+function! esy#IsVersionValidAndNewEnough(version)
+  if empty(a:version)
+    return 0
   endif
-  let versionRes = xolox#misc#os#exec({'command': binLoc . " --version", 'check': 0})
-  let versionRes = s:resultFirstLineOr(versionRes, g:esy#errNoEsyBinary)
-  " Can't invoke --version for some reason.
-  if esy#matchError(versionRes, g:esy#errNoEsyBinary)
-    return g:esy#errNoEsyBinary
+  " The esy status command was added in 0.4.4.
+  if a:version['major'] >=0 && ((a:version['minor'] == 4 && a:version['patch'] >= 4) || a:version['minor'] > 4)
+    return 1
   else
-    let matches = matchlist(versionRes, "\\([0-9]\\+\\)\\.\\([0-9]\\+\\)\\.\\([0-9]\\+\\)")
-    if empty(matches)
-      return g:esy#errNoEsyBinary
-    endif
-    let major = matches[1]
-    let minor = matches[2]
-    let patch = matches[3]
-    " The esy status command was added in 0.4.4.
-    if major >=0 && ((minor == 4 && patch >= 4) || minor > 4)
-      return binLoc
-    else
-      return g:esy#errVersionTooOld
-    endif
+    return 0
   endif
 endfunction
+
+function! esy#FetchVersion(pathToEsy)
+  let versionRes = xolox#misc#os#exec({'command': a:pathToEsy . " --version", 'check': 0})
+  let versionRes = s:resultFirstLineOr(versionRes, {})
+  " Can't invoke --version for some reason.
+  if empty(versionRes)
+    return versionRes
+  endif
+  let matches = matchlist(versionRes, "\\([0-9]\\+\\)\\.\\([0-9]\\+\\)\\.\\([0-9]\\+\\)")
+  if empty(matches)
+    return {}
+  endif
+  let major = matches[1]
+  let minor = matches[2]
+  let patch = matches[3]
+  return {'major': major, 'minor': minor, 'patch': patch}
+endfunction
+
+
 
 " Locates a binary by name, for the platform's default executable system (on
 " windows, that's cmd.exe and `where`') within the current esy project if

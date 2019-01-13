@@ -9,6 +9,7 @@ function! airline#extensions#esy#GetEsyProjectStatus()
     return ''
   else
     let projectInfo = esy#FetchProjectInfoForProjectRootCached(l:esyLocatedProjectRoot)
+    " TODO: What if projectInfo is not a list!
     if (projectInfo == [] || !esy#ProjectStatusOfProjectInfo(projectInfo)['isProject'])
       return ''
     else

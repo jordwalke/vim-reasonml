@@ -3,6 +3,7 @@
 if !exists('g:reasonml_esy_path')
   let g:reasonml_esy_path=''
 endif
+let g:did_warn_no_esy_yet = 0
 
 " Standard Polyfill
 " The v:t_number form was only recently added in Vim. This is a universal
@@ -30,9 +31,8 @@ endif
 
 " Where esy is found to be installed.
 let g:reasonml_esy_discovered_path=g:reasonml_esy_path
-" Esy version installed.
-let g:reasonml_esy_discovered_ver=''
-
+" The discovered version of that binary. Empty object means not valid.
+let g:reasonml_esy_discovered_version={}
 
 let g:esyLogCacheMisses=0
 
@@ -46,6 +46,7 @@ let g:esyProjectInfoCacheByProjectRoot={}
 let g:esyLocatedBinaryByProjectRoot={}
 let g:esyEnvCacheByProjectRoot={}
 
+call esy#SetGlobalEsy()
 
 command! -nargs=0 EsyFetchProjectInfo :call esy#CmdFetchProjectInfo()
 command! -nargs=0 EsyReset :call esy#CmdResetCacheAndReloadBuffer()

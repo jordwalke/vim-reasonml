@@ -58,6 +58,11 @@ endfunction
 
 function! reason#LoadBuffer()
   let projectRoot = esy#FetchProjectRootCached()
+  let esyPath = esy#getBestEsyPathForProject(projectRoot)
+  if empty(esyPath)
+    call esy#WarnAboutMissingEsy()
+    return 0
+  endif
   let projectInfo = esy#FetchProjectInfoForProjectRootCached(projectRoot)
   if !esy#UserValidateIsReadyProject(projectRoot, projectInfo, "load reasonml support")
     return 0
