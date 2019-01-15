@@ -226,7 +226,20 @@ function! esy#FetchProjectInfoForProjectRoot(projectRoot)
     if esy#matchError(statObj, g:esy#errCantStatus)
       call esy#UpdateLastError(ret)
       if !exists('b:did_warn_cant_status') || !b:did_warn_cant_status
-        call console#Error("Failed to call esy status on project")
+        if xolox#misc#os#is_win()
+          let v = !empty(b:reasonml_esy_discovered_version) ? b:reasonml_esy_discovered_version : (!empty('g:reasonml_esy_discovered_version') ? g:reasonml_esy_discovered_version : '')
+          " If pre 0.5.1 esy, you couldn't even do --version so we have no
+          " version. Also, we had had to run editor commands in admin mode so
+          " no version is a good sign you need to run in admin mode on
+          " windows.
+          if empty(v)
+            call console#Error("Failed to esy status project. esy < 0.5.0 requires running your Windows editor in admin mode")
+          else
+            call console#Error("Failed to call esy status on project. ")
+          endif
+        else
+          call console#Error("Failed to call esy status on project")
+        endif
         let b:did_warn_cant_status = 1
         return []
       endif
