@@ -193,6 +193,20 @@ function! esy#getBestEsyPathForProject(projectRoot)
   endif
 endfunction
 
+" Used by other plugins to get the esy path. Do not break!
+" Returns the version that is new enough to be used with the vim plugin.
+function! esy#getBestEsyVersionForProject(projectRoot)
+  call esy#SetLocalEsyIfNecessary(a:projectRoot)
+  if !empty(b:reasonml_esy_discovered_path) && esy#IsVersionValidAndNewEnough(b:reasonml_esy_discovered_version)
+    return b:reasonml_esy_discovered_version
+  elseif !empty(g:reasonml_esy_discovered_path) && esy#IsVersionValidAndNewEnough(g:reasonml_esy_discovered_version)
+    return g:reasonml_esy_discovered_version
+  else
+    return ""
+  endif
+endfunction
+
+
 
 function! esy#WarnAboutMissingEsy()
   if !g:did_warn_no_esy_yet
@@ -203,6 +217,28 @@ function! esy#WarnAboutMissingEsy()
       call console#Error("The global esy needs to be updated to the latest esy:" . g:reasonml_esy_discovered_path)
       let g:did_warn_no_esy_yet = 1
     endif
+  endif
+endfunction
+
+" If returns false, it might still support it, we just don't know the version
+" so can't even check.
+function! esy#DefinitelySupportsExecCommand(version)
+  if empty(a:version)
+    return 0
+  else
+    return a:version['minor'] >= 4 || (a:version['minor'] == 4 && a:version['patch'] >= 4)
+  endif
+endfunction
+
+" Form of `esy my shell command` that does not ever trigger builds and doesn't
+" require symlinks. Not for use with `esy status`/`esy build` etc.
+function! esy#getBestEsyShellCommand(projectRoot, cmd)
+  let esyPath = esy#getBestEsyPathForProject(a:projectRoot)
+  let esyVersion = esy#getBestEsyVersionForProject(a:projectRoot)
+  if esy#DefinitelySupportsExecCommand(esyVersion)
+    return " esy exec-command --include-build-env --include-current-env " . a:cmd
+  else
+    return " esy " . a:cmd
   endif
 endfunction
 
@@ -220,12 +256,14 @@ function! esy#FetchProjectInfoForProjectRoot(projectRoot)
   if a:projectRoot == []
     return []
   else
-    let cmd = esy#cdCommand(a:projectRoot, esy#getBestEsyPathForProject(a:projectRoot) . ' status')
+    let cmd = esy#cdCommand(a:projectRoot, esy#getBestEsyPathForProject(a:projectRoot) . " status")
     let ret = xolox#misc#os#exec({'command': cmd, 'check': 0})
     let statObj = s:jsonObjOr(ret, g:esy#errCantStatus)
     if esy#matchError(statObj, g:esy#errCantStatus)
       call esy#UpdateLastError(ret)
       if !exists('b:did_warn_cant_status') || !b:did_warn_cant_status
+        " This entire windows branch can be removed when everyone has moved to
+        " esy >= 0.5.1.
         if xolox#misc#os#is_win()
           let v = !empty(b:reasonml_esy_discovered_version) ? b:reasonml_esy_discovered_version : (!empty('g:reasonml_esy_discovered_version') ? g:reasonml_esy_discovered_version : '')
           " If pre 0.5.1 esy, you couldn't even do --version so we have no
@@ -396,6 +434,7 @@ function! esy#FetchGlobalEsyBinaryLoc()
 endfunction
 
 function! esy#cdCommand(projectRoot, cmd)
+  " We could try something like this to trigger elevated prompt: powershell -c start -verb runas notepad.exe
   let osChangeDir = s:is_win ? ('CD /D ' . a:projectRoot[0] . ' &') : ('cd ' . a:projectRoot[0] . ' &&')
   return osChangeDir.' '.a:cmd
 endfunction
@@ -431,13 +470,13 @@ endfunction
 " not ready.
 " Requires that all inputs already be valid and represent a known, prepared
 " project.
-function! esy#ProjectExecForReadyProject(projectRoot, projectInfo, cmd, input)
+function! esy#ProjectShellExecForReadyProject(projectRoot, projectInfo, cmd, input)
   let projectStatus = esy#ProjectStatusOfProjectInfo(a:projectInfo)
   " This should never happen. If so it's a bug in the plugin.
   if (!projectStatus['isProjectReadyForDev'])
     throw "called esy#FetchProjectInfoForProjectRoot on a project not installed and built " . a:projectRoot[0]
   else
-    let ret = xolox#misc#os#exec({'command': esy#cdCommand(a:projectRoot, g:reasonml_esy_discovered_path.' '.a:cmd), 'stdin': a:input, 'check': 0})
+    let ret = xolox#misc#os#exec({'command': esy#cdCommand(a:projectRoot, esy#getBestEsyShellCommand(a:projectRoot, a:cmd)), 'stdin': a:input, 'check': 0})
   endif
   if ret['exit_code'] != 0
     call esy#UpdateLastError(ret)
@@ -452,7 +491,7 @@ endfunction
 
 " Built in esy commands such as esy ls-builds that we expose as `:EsyFoo` use
 " this. These commands don't require that the project be completely ready.
-function! esy#ProjectCommandForProjectRoot(projectRoot, cmd)
+function! esy#ProjectBuiltInCommandForProjectRoot(projectRoot, cmd)
   let esyPath = esy#getBestEsyPathForProject(a:projectRoot)
   if empty(esyPath)
     call console#Error("esy doesn't appear to be installed on your system. Is it in your global PATH?")
@@ -493,9 +532,6 @@ let g:esy#errVersionTooOld={'thisIsAnError': 1, 'code': 2}
 let g:esy#errCantStatus={'thisIsAnError': 1, 'code': 3}
 
 " Project loading/updating states.
-let g:esy#notValidEsyProject={'thisIsAnError': 1, 'code': 4}
-let g:esy#validEsyProjectNotReadyForDevelopment={'thisIsAnError': 1, 'code': 5}
-let g:esy#validEsyProjectReadyForDevelopmentButNoMerlin={'thisIsAnError': 1, 'code': 6}
 
 function! esy#isError(ret)
   return type(a:ret) == g:v_t_dict && has_key(a:ret, 'thisIsAnError')
@@ -544,7 +580,7 @@ endfunction
 " Note: Requires that the project be "ready" for development.
 function! esy#EsyLocateBinaryForReadyProject(name, projectRoot, projectInfo)
   let cmd = s:platformLocatorCommand(a:name)
-  let res = esy#ProjectExecForReadyProject(a:projectRoot, a:projectInfo, cmd, '')
+  let res = esy#ProjectShellExecForReadyProject(a:projectRoot, a:projectInfo, cmd, '')
   return s:resultFirstLineOr(res, -1)
 endfunction
 
@@ -600,7 +636,7 @@ function! esy#CmdEsyExec(cmd)
   let projectRoot = esy#FetchProjectRoot()
   let projectInfo = esy#FetchProjectInfoForProjectRoot(projectRoot)
   if esy#UserValidateIsReadyProject(projectRoot, projectInfo, "execute command")
-    let res = esy#ProjectExecForReadyProject(projectRoot, projectInfo, a:cmd, '')
+    let res = esy#ProjectShellExecForReadyProject(projectRoot, projectInfo, a:cmd, '')
     if res['exit_code'] == 0
       call console#Info(join(res['stdout'], "\n"))
     else
@@ -621,25 +657,25 @@ endfunction
 " Built in esy commands such as esy ls-builds
 function! esy#CmdEsyLibs()
   let projectRoot = esy#FetchProjectRoot()
-  return esy#ProjectCommandForProjectRoot(projectRoot, "ls-libs")
+  return esy#ProjectBuiltInCommandForProjectRoot(projectRoot, "ls-libs")
 endfunction
 
 " Built in esy commands such as esy ls-builds
 function! esy#CmdBuilds()
   let projectRoot = esy#FetchProjectRoot()
-  call esy#ProjectCommandForProjectRoot(projectRoot, "ls-builds")
+  call esy#ProjectBuiltInCommandForProjectRoot(projectRoot, "ls-builds")
 endfunction
 
 " Built in esy commands such as esy ls-builds
 function! esy#CmdStatus()
   let projectRoot = esy#FetchProjectRoot()
-  call esy#ProjectCommandForProjectRoot(projectRoot, "status")
+  call esy#ProjectBuiltInCommandForProjectRoot(projectRoot, "status")
 endfunction
 
 
 function! esy#CmdEsyModules()
   let projectRoot = esy#FetchProjectRoot()
-  call esy#ProjectCommandForProjectRoot(projectRoot, "ls-modules")
+  call esy#ProjectBuiltInCommandForProjectRoot(projectRoot, "ls-modules")
 endfunction
 
 

@@ -13,7 +13,8 @@ function! airline#extensions#esy#GetEsyProjectStatus()
     if (projectInfo == [] || !esy#ProjectStatusOfProjectInfo(projectInfo)['isProject'])
       return ''
     else
-      if empty(g:reasonml_esy_discovered_path)
+      let esyPath = esy#getBestEsyPathForProject(l:esyLocatedProjectRoot)
+      if empty(esyPath)
         let l:displayStatus = '[missing esy]'
       else
         let status = esy#ProjectStatusOfProjectInfo(projectInfo)
