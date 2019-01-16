@@ -223,10 +223,13 @@ endfunction
 " If returns false, it might still support it, we just don't know the version
 " so can't even check.
 function! esy#DefinitelySupportsExecCommand(version)
+  " Actually on 0.4.9, command-exec isn't including the dev environment and
+  " adjusting the envspec causes it to fail
+  return 0
   if empty(a:version)
     return 0
   else
-    return a:version['minor'] >= 4 || (a:version['minor'] == 4 && a:version['patch'] >= 4)
+    return a:version['minor'] >= 5
   endif
 endfunction
 
@@ -236,7 +239,7 @@ function! esy#getBestEsyShellCommand(projectRoot, cmd)
   let esyPath = esy#getBestEsyPathForProject(a:projectRoot)
   let esyVersion = esy#getBestEsyVersionForProject(a:projectRoot)
   if esy#DefinitelySupportsExecCommand(esyVersion)
-    return " esy exec-command --include-build-env --include-current-env " . a:cmd
+    return " esy exec-command --include-build-env --include-current-env --envspec 'dependencies(self)+devDependencies(self)' -p " . a:projectRoot[1] . " " . a:cmd
   else
     return " esy " . a:cmd
   endif
