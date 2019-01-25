@@ -1,7 +1,8 @@
 " For some reason that env is too large on Windows. Copy over only the subset.
-function! reason#MerlinEnvFromProjectEnv(env)
-  let env = a:env
-  let env = {
+function! reason#MerlinEnvFromProjectEnv(envArg)
+  " old vims don't let you rename variables to newly typed values.
+  let env = a:envArg
+  let newEnv = {
         \ 'CAML_LD_LIBRARY_PATH': has_key(env, 'CAML_LD_LIBRARY_PATH') ? env['CAML_LD_LIBRARY_PATH'] : '',
         \ 'HOMEPATH': has_key(env, 'HOMEPATH') ? env['HOMEPATH'] : '',
         \ 'OCAMLFIND_COMMANDS': has_key(env,'OCAMLFIND_COMMANDS') ? env['OCAMLFIND_COMMANDS'] : '',
@@ -12,7 +13,7 @@ function! reason#MerlinEnvFromProjectEnv(env)
         \ 'OCAML_TOPLEVEL_PATH': has_key(env, 'OCAML_TOPLEVEL_PATH') ? env['OCAML_TOPLEVEL_PATH'] : '',
         \ 'PATH': has_key(env, 'PATH') ? env['PATH'] : ''
         \ }
-  return env
+  return newEnv
 endfunction
 
 " Performs any sandbox/environment switching/reloading/cache-invalidation.
@@ -38,8 +39,8 @@ function! reason#RegisterMerlinOnEnvironmentChangedForReadyProject(projectRoot, 
     call ReasonMaybeUseThisMerlinVimPluginForAllProjects(merlinPath)
     " g:merlin was provided by merlin loaded plugin.
     if exists('g:merlin')
-      let env = esy#ProjectEnvCached(a:projectRoot)
-      let env = reason#MerlinEnvFromProjectEnv(env)
+      let projectEnv = esy#ProjectEnvCached(a:projectRoot)
+      let env = reason#MerlinEnvFromProjectEnv(projectEnv)
       " Merlin looks for them under these names.
       let b:merlin_path = merlinPath
       let b:merlin_env = env
