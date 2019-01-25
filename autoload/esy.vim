@@ -239,9 +239,9 @@ function! esy#getBestEsyShellCommand(projectRoot, cmd)
   let esyPath = esy#getBestEsyPathForProject(a:projectRoot)
   let esyVersion = esy#getBestEsyVersionForProject(a:projectRoot)
   if esy#DefinitelySupportsExecCommand(esyVersion)
-    return " esy exec-command --include-build-env --include-current-env --envspec 'dependencies(self)+devDependencies(self)' -p " . a:projectRoot[1] . " " . a:cmd
+    return esyPath . " exec-command --include-build-env --include-current-env --envspec 'dependencies(self)+devDependencies(self)' -p " . a:projectRoot[1] . " " . a:cmd
   else
-    return " esy " . a:cmd
+    return esyPath . " " . a:cmd
   endif
 endfunction
 
@@ -268,6 +268,7 @@ function! esy#FetchProjectInfoForProjectRoot(projectRoot)
         " This entire windows branch can be removed when everyone has moved to
         " esy >= 0.5.1.
         if xolox#misc#os#is_win()
+          " Maybe could replace this with the "get best esy path function"?
           let v = !empty(b:reasonml_esy_discovered_version) ? b:reasonml_esy_discovered_version : (!empty('g:reasonml_esy_discovered_version') ? g:reasonml_esy_discovered_version : '')
           " If pre 0.5.1 esy, you couldn't even do --version so we have no
           " version. Also, we had had to run editor commands in admin mode so
@@ -326,11 +327,12 @@ function! esy#UpdateLastError(ret)
 endfunction
 
 function! esy#ProjectEnv(projectRoot)
-  if empty(a:projectRoot) || empty(g:reasonml_esy_discovered_path)
+  let bestEsy = esy#getBestEsyPathForProject(a:projectRoot)
+  if empty(a:projectRoot) || empty(bestEsy)
     call console#Error("Should not be calling ProjectEnv without an esy project and esy")
     return
   endif
-  let ret = xolox#misc#os#exec({'command': 'cd ' . a:projectRoot[0] . ' && esy command-env --json', 'check': 0})
+  let ret = xolox#misc#os#exec({'command': 'cd ' . a:projectRoot[0] . ' && ' . bestEsy . ' command-env --json', 'check': 0})
   if ret['exit_code'] != 0
     call esy#UpdateLastError(ret)
     return -1
@@ -446,7 +448,8 @@ endfunction
 " a:verbDescription). For example, this is the validation you'd use if a user
 " run `:EsyExec` or `:ReasonPrettyPrint` etc.
 function! esy#UserValidateIsReadyProject(projectRoot, projectInfo, verbDescription)
-  if empty(a:projectRoot) || empty(g:reasonml_esy_discovered_path)
+  let bestEsy = esy#getBestEsyPathForProject(a:projectRoot)
+  if empty(a:projectRoot) || empty(bestEsy)
     let msg = (a:projectRoot == []) ? 'Cannot ' . a:verbDescription . ' on non esy project. ' : 'Cannot ' . a:verbDescription . ' because '
     let msg = msg . (empty(g:reasonml_esy_discovered_path) ? 'esy does not appear to be installed on your system. Is it in your global PATH?' : '')
     call console#Error(msg)
@@ -462,7 +465,13 @@ function! esy#UserValidateIsReadyProject(projectRoot, projectInfo, verbDescripti
     return 0
   endif
   if (!projectStatus['isProjectReadyForDev'])
-    call console#Error("Cannot " . a:verbDescription . " until you run esy at " . a:projectRoot[0])
+    if (exists('b:reasonml_esy_discovered_path') && !empty(b:reasonml_esy_discovered_path))
+      " Buffer specific esys tend to be incorporated in existing projects
+      " not using esy for main dev workflow.
+      call console#Error("Cannot " . a:verbDescription . ". Project unbuilt. Build project at " . a:projectRoot[0] . " then run :EsyReset")
+    else
+      call console#Error("Cannot " . a:verbDescription . ". Project unbuilt. Run esy at " . a:projectRoot[0] . " then run :EsyReset")
+    endif
     return 0
   else
     return 1
@@ -473,13 +482,22 @@ endfunction
 " not ready.
 " Requires that all inputs already be valid and represent a known, prepared
 " project.
+" An empty input string will be treated as no stdin. Sorry, it's the only way
+" for old vims to not fail when they do `call system('executablename', '')`
 function! esy#ProjectShellExecForReadyProject(projectRoot, projectInfo, cmd, input)
   let projectStatus = esy#ProjectStatusOfProjectInfo(a:projectInfo)
   " This should never happen. If so it's a bug in the plugin.
   if (!projectStatus['isProjectReadyForDev'])
     throw "called esy#FetchProjectInfoForProjectRoot on a project not installed and built " . a:projectRoot[0]
   else
-    let ret = xolox#misc#os#exec({'command': esy#cdCommand(a:projectRoot, esy#getBestEsyShellCommand(a:projectRoot, a:cmd)), 'stdin': a:input, 'check': 0})
+    " Old vim versions will fail if passing an empty string to stdin
+    let theCmd = esy#cdCommand(a:projectRoot, esy#getBestEsyShellCommand(a:projectRoot, a:cmd))
+    if empty(a:input)
+      let spec = {'command': theCmd, 'check': 0}
+    else
+      let spec = {'command': theCmd, 'stdin': a:input, 'check': 0}
+    endif
+    let ret = xolox#misc#os#exec(spec)
   endif
   if ret['exit_code'] != 0
     call esy#UpdateLastError(ret)
@@ -497,7 +515,7 @@ endfunction
 function! esy#ProjectBuiltInCommandForProjectRoot(projectRoot, cmd)
   let esyPath = esy#getBestEsyPathForProject(a:projectRoot)
   if empty(esyPath)
-    call console#Error("esy doesn't appear to be installed on your system. Is it in your global PATH?")
+    call console#Error("esy doesn't !appear to be installed on your system. Is it in your global PATH?")
     return
   endif
   if a:projectRoot == []
@@ -558,12 +576,14 @@ endfunction
 
 function! esy#FetchVersion(pathToEsy)
   let versionRes = xolox#misc#os#exec({'command': a:pathToEsy . " --version", 'check': 0})
-  let versionRes = s:resultFirstLineOr(versionRes, {})
+  " Old vim doesn't let you reuse variable names if they are assigned to
+  " different types? The More You Know.
+  let versionResOrEmpty = s:resultFirstLineOr(versionRes, "")
   " Can't invoke --version for some reason.
-  if empty(versionRes)
-    return versionRes
+  if empty(versionResOrEmpty)
+    return versionResOrEmpty
   endif
-  let matches = matchlist(versionRes, "\\([0-9]\\+\\)\\.\\([0-9]\\+\\)\\.\\([0-9]\\+\\)")
+  let matches = matchlist(versionResOrEmpty, "\\([0-9]\\+\\)\\.\\([0-9]\\+\\)\\.\\([0-9]\\+\\)")
   if empty(matches)
     return {}
   endif
