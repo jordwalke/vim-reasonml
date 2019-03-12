@@ -91,14 +91,13 @@ endfunction
 " Expensive, Only Do Once In While. Always up to date.
 " ======================================================================
 
-
-" Returns empty list if not a valid esy project.
-function! esy#FetchProjectRoot()
-  let l:isUnnamed=expand("%") == ''
-  let l:cwd = expand("%:p:h")
+" startAtDir must be a dir
+function! esy#FetchProjectRootFor(startAtDir)
+  let l:cwd = a:startAtDir
   let l:rp = fnamemodify('/', ':p')
   let l:hp = fnamemodify($HOME, ':p')
-  while l:cwd != l:hp && l:cwd != l:rp
+  let l:count = 0
+  while l:count < 100 && l:cwd != l:hp && l:cwd != l:rp
     let esyJsonPath = resolve(l:cwd . '/esy.json')
     if filereadable(esyJsonPath)
       return [l:cwd, 'esy.json']
@@ -127,8 +126,23 @@ function! esy#FetchProjectRoot()
       endif
     endif
     let l:cwd = resolve(l:cwd . '/..')
+    let l:count = l:count + 1
   endwhile
   return []
+endfunction
+
+" Returns empty list if not a valid esy project.
+function! esy#FetchProjectRoot()
+  let l:isUnnamed=expand("%") == ''
+  let l:start = ""
+  if l:isUnnamed
+    " Expand to the current directory (that's how :p:h behaves)
+    let l:start = expand("%:p:h")
+  else
+    " Directory current file resides in.
+    let l:start = expand("%:p:h")
+  endif
+  return esy#FetchProjectRootFor(l:start)
 endfunction
 
 function! esy#FetchLocalEsyBinaryLoc(projectRoot)
@@ -358,9 +372,10 @@ function! esy#ProjectEnvCached(projectRoot)
   endif
 endfunction
 
-" TODO: Allow supplying an arbitrary buffer nr.
-function! esy#FetchProjectRootCached()
-  let l:cacheKey = esy#GetCacheKeyCurrentBuffer()
+" Must supply a directory as argument. Either the project root, or the
+" directory your file sits inside of.
+function! esy#FetchProjectRootForCached(fileDir)
+  let l:cacheKey = a:fileDir
   if has_key(g:esyProjectRootCacheByBuffer, l:cacheKey)
     let projectRoot = g:esyProjectRootCacheByBuffer[l:cacheKey]
     if !empty(projectRoot)
@@ -372,7 +387,7 @@ function! esy#FetchProjectRootCached()
     if g:esyLogCacheMisses
       call console#Info("Cache miss project root " . l:cacheKey)
     endif
-    let projectRoot = esy#FetchProjectRoot()
+    let projectRoot = esy#FetchProjectRootFor(a:fileDir)
     " Always update an entry keyed by the project root dir. That way we know
     " project root dir always has the freshest result. It can be prefered even
     " any time you get a cache hit above. This means any time you open up a
@@ -386,6 +401,19 @@ function! esy#FetchProjectRootCached()
       return projectRoot
     endif
   endif
+endfunction
+
+" TODO: Allow supplying an arbitrary buffer nr.
+function! esy#FetchProjectRootCached()
+  let l:isUnnamed=expand("%") == ''
+  let l:dir = ""
+  if l:isUnnamed
+    " Expand to the current directory (that's how empty name behaves)
+    let l:dir = expand("%:p:h")
+  else
+    let l:dir = expand("%:p:h")
+  endif
+  return esy#FetchProjectRootForCached(l:dir)
 endfunction
 
 " Allows deferring of running commands the first time until built once. Don't
@@ -640,7 +668,7 @@ function! esy#GetCacheKeyCurrentBuffer()
     " Expand to the current directory
     return expand("%:p:h")
   else
-    return expand("%:p")
+    return expand("%:p:h")
   endif
 endfunction
 
