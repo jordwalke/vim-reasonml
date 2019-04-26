@@ -51,10 +51,21 @@ endif
 
 " Automatic commands. {{{1
 
-augroup PluginShell
-  " These enable automatic highlighting of URLs and e-mail addresses.
-  autocmd! BufNew,BufRead,Syntax * call xolox#shell#highlight_urls()
-augroup END
+" jordwalke: Some people reported errors for this url highlighting, so
+" let's disable it. Has nothing to do with reason plugin anyways.
+" Error detected while processing function xolox#shell#highlight_urls:
+" line   13:
+" E409: Unknown group name: .*Comment.*,.*String.*
+" Interrupt: Press ENTER or type command to continue
+" Error detected while processing function xolox#shell#highlight_urls:
+" line   13:
+" E475: Invalid argument: CommentURL /\<\w\{3,}:\/\/\(\(\S\&[^"]\)*\w\)\+[\/?#]\?/ contained contai
+" nedin=.*Comment.*,.*String.*
+" 
+" augroup PluginShell
+"   " These enable automatic highlighting of URLs and e-mail addresses.
+"   autocmd! BufNew,BufRead,Syntax * call xolox#shell#highlight_urls()
+" augroup END
 
 " Regular commands. {{{1
 
