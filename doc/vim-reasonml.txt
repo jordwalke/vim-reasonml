@@ -21,7 +21,7 @@ CONTENTS                                                              *ft-reason
 ================================================================================
 INTRODUCTION                                                       *reason-intro*
 
-Plugin for developing Reason proejcts with Reason syntax and Merlin.
+Plugin for developing Reason projects with Reason syntax and Merlin.
 
 You must have Merlin installed as a `devDependency` of an
 [`esy`](https://github.com/esy/esy) project.
