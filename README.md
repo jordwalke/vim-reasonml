@@ -28,7 +28,7 @@ See [The vim-reasonml Plugin Documentation](./doc/vim-reasonml.txt).
 
 - `npm install -g esy`
 - Install `vim-reasonml` with your vim plugin manager. If using
-  [`vim-plug`](https://github.com/junegunn/vim-plug) add `Plug 'jordwalke/vim-reasonml`
+  [`vim-plug`](https://github.com/junegunn/vim-plug) add `Plug 'jordwalke/vim-reasonml'`
   to your `~/.vimrc`)
 - Create a project with `@opam/merlin` as a `devDependency`. You can fork
   [hello-reason](https://github.com/esy-ocaml/hello-reason) to get started.
