@@ -98,7 +98,7 @@ syn keyword   reasonBoolean     true false
 "syn match     reasonCapsIdent    display "[A-Z]\w\(\w\)*"
 
 syn match     reasonOperator     display "\%(@\|+\|-\|/\|*\|=\|\^\|&\||\|!\|>\|<\|%\)=\?"
-syn match     reasonOperator     display "\~\%(@\|+\|-\|/\|*\|=\|\^\|&\||\|!\|>\|<\|%\)=\?"
+syn match     reasonOperator     display "\~\%(@\|+\|-\|/\|*\|=\|\^\|&\||\|!\|>\|<\|%\|\~\)=\?"
 " This one isn't *quite* right, as we could have binary-& with a reference
 
 " This isn't actually correct; a closure with no arguments can be `|| { }`.
