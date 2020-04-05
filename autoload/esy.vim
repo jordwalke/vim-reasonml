@@ -570,7 +570,7 @@ function! esy#ProjectBuiltInCommandForProjectRoot(projectRoot, cmd)
 endfunction
 
 function! s:platformLocatorCommand(name)
-  return s:is_win ? ('where ' . a:name) : ('which ' . a:name)
+  return s:is_win ? ('where.exe ' . a:name) : ('which ' . a:name)
 endfunction
 
 " Error codes:
