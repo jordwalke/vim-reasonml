@@ -17,14 +17,6 @@ endif
 syn keyword   reasonConditional try switch if else for while
 syn keyword   reasonOperator    as to downto
 
-" From xolox shell
-" URL = escape('\<\w\{3,}://\(\(\S\&[^"]\)*\w\)\+[/?#]\?', '/')
-" == \<\w\{3,}:\/\/\(\(\S\&[^"]\)*\w\)\+[\/?#]\?
-" MAIL=- escape('\<\w[^@ \t\r<>]*\w@\w[^@ \t\r<>]\+\w\>', '/') 
-" == \<\w[^@ \t\r<>]*\w@\w[^@ \t\r<>]\+\w\>
-
-syntax match reasonCommentURL /\<\w\{3,}:\/\/\(\(\S\&[^"]\)*\w\)\+[\/?#]\?/ contained containedin=reasonCommentLine,reasonComment,reasonCommentBlockDoc,reasonString,reasonMultilineString
-syntax match reasonCommentMail /\<\w[^@ \t\r<>]*\w@\w[^@ \t\r<>]\+\w\>/ contained containedin=reasonCommentLine,reasonComment,reasonCommentBlockDoc,reasonString,reasonMultilineString
 " syn keyword   reasonKeyword     fun nextgroup=reasonFuncName skipwhite skipempty
 syn match     reasonAssert      "\<assert\(\w\)*"
 syn match     reasonFailwith    "\<failwith\(\w\)*"
@@ -54,20 +46,12 @@ syn match    reasonModPath  "\(\<module\s\+\u\w*\s*=\s*\)\@<=\u\(\w\|\.\)*"
 " {} are handled by reasonFoldBraces
 
 
-syn region reasonMacroRepeat matchgroup=reasonMacroRepeatDelimiters start="$(" end=")" contains=TOP nextgroup=reasonMacroRepeatCount
-syn match reasonMacroRepeatCount ".\?[*+]" contained
-syn match reasonMacroVariable "$\w\+"
-
 " Built-in types {{{2
 syn keyword   reasonType        result int float option list array unit ref bool string
 
 " Things from the libstd v1 prelude (src/libstd/prelude/v1.rs) {{{2
 " This section is just straight transformation of the contents of the prelude,
 " to make it easy to update.
-
-" Reexported core operators {{{3
-syn keyword   reasonTrait       Copy Send Sized Sync
-syn keyword   reasonTrait       Drop Fn FnMut FnOnce
 
 " Reexported functions {{{3
 " There’s no point in highlighting these; when one writes drop( or drop::< it
@@ -76,13 +60,6 @@ syn keyword   reasonTrait       Drop Fn FnMut FnOnce
 "syn keyword reasonFunction drop
 
 " Reexported types and traits {{{3
-syn keyword reasonTrait ToOwned
-syn keyword reasonTrait Clone
-syn keyword reasonTrait PartialEq PartialOrd Eq Ord
-syn keyword reasonTrait AsRef AsMut Into From
-syn keyword reasonTrait Default
-syn keyword reasonTrait Iterator Extend IntoIterator
-syn keyword reasonTrait DoubleEndedIterator ExactSizeIterator
 syn keyword reasonEnum Option
 syn keyword reasonConstructor Some None
 syn keyword reasonEnum Result
@@ -97,8 +74,7 @@ syn keyword   reasonBoolean     true false
 " [:upper:] as it depends upon 'noignorecase'
 "syn match     reasonCapsIdent    display "[A-Z]\w\(\w\)*"
 
-syn match     reasonOperator     display "\%(@\|+\|-\|/\|*\|=\|\^\|&\||\|!\|>\|<\|%\)=\?"
-syn match     reasonOperator     display "\~\%(@\|+\|-\|/\|*\|=\|\^\|&\||\|!\|>\|<\|%\|\~\)=\?"
+syn match     reasonOperator     display "\%(+\|-\|/\|*\|=\|\^\|&\||\|!\|>\|<\|%\)=\?"
 " This one isn't *quite* right, as we could have binary-& with a reference
 
 " This isn't actually correct; a closure with no arguments can be `|| { }`.
@@ -119,6 +95,13 @@ syn region    reasonString      start='b\?r\z(#*\)"' end='"\z1' contains=@Spell
 
 syn region    reasonMultilineString      start=+b{|+ skip=+\\\\\|\\"+ end=+|}+ contains=reasonEscape,reasonEscapeError,reasonStringContinuation
 syn region    reasonMultilineString      start=+{|+ end=+|}+ contains=reasonEscape,reasonEscapeUnicode,reasonEscapeError,reasonStringContinuation,@Spell
+
+
+" https://github.com/pangloss/vim-javascript/blob/master/syntax/javascript.vim
+syntax region  reasonTemplateExpression contained matchgroup=reasonTemplateBraces start=+\(^\|[^\\]\)${+ end=+}+ contains=@interpolation keepend
+syntax region  reasonTemplateString   start=+`$+  skip=+\\`+  end=+`+     contains=reasonTemplateExpression,jsSpecial extend
+syntax match   reasonTaggedTemplate   /\<\K\k*\ze`/ nextgroup=reasonTemplateString
+
 
 syn region    reasonAttribute   start="#!\?\[" end="\]" contains=reasonString,reasonDerive
 " This list comes from src/libsyntax/ext/deriving/mod.rs
@@ -174,6 +157,10 @@ syn keyword reasonTodo contained TODO FIXME XXX NB NOTE
 " Trivial folding rules to begin with.
 " FIXME: use the AST to make really good folding
 syn region reasonFoldBraces start="{" end="}" transparent fold
+" These mess up the highlighting
+" reasonIdentifier,reasonIdentifierPrime,
+syntax cluster interpolation  contains=reasonTemplateString,reasonCommentBlock,reasonMultilineString,reasonString,reasonSelf,reasonBoolean,reasonType,reasonStorage,reasonAssert,reasonFailwith,reasonOperator,reasonConditional,reasonNumber,reasonCharacter,reasonConstructor,labelArgument,labelArgumentPunned,reasonCapsIdent,reasonFloat,reasonModPath,reasonDecNumber,reasonHexNumber,reasonOctNumber,reasonBinNumber,reasonArrowCharacter
+
 
 " Default highlighting {{{1
 hi def link labelArgument       Special
@@ -183,17 +170,16 @@ hi def link reasonHexNumber       reasonNumber
 hi def link reasonOctNumber       reasonNumber
 hi def link reasonBinNumber       reasonNumber
 hi def link reasonIdentifierPrime reasonIdentifier
-hi def link reasonTrait           reasonType
 
-hi def link reasonMacroRepeatCount   reasonMacroRepeatDelimiters
-hi def link reasonMacroRepeatDelimiters   Macro
-hi def link reasonMacroVariable Define
 hi def link reasonEscape        Special
 hi def link reasonEscapeUnicode reasonEscape
 hi def link reasonEscapeError   Error
 hi def link reasonStringContinuation Special
 hi def link reasonString          String
 hi def link reasonMultilineString String
+hi def link reasonTemplateString  String
+
+
 hi def link reasonCharacterInvalid Error
 hi def link reasonCharacterInvalidUnicode reasonCharacterInvalid
 hi def link reasonCharacter     Character
@@ -226,9 +212,9 @@ hi def link reasonAttribute     PreProc
 hi def link reasonStorage       Keyword
 hi def link reasonObsoleteStorage Error
 
+hi def link reasonTemplateBraces Noise
+hi def link reasonTaggedTemplate StorageClass
 
-highlight def link reasonCommentURL Underlined
-highlight def link reasonCommentMail Underlined
 
 syn sync minlines=200
 syn sync maxlines=500
