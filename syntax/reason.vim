@@ -98,8 +98,8 @@ syn region    reasonMultilineString      start=+{|+ end=+|}+ contains=reasonEsca
 
 
 " https://github.com/pangloss/vim-javascript/blob/master/syntax/javascript.vim
-syntax region  reasonTemplateExpression contained matchgroup=reasonTemplateBraces start=+\(^\|[^\\]\)${+ end=+}+ contains=@interpolation keepend
-syntax region  reasonTemplateString   start=+`$+  skip=+\\`+  end=+`+     contains=reasonTemplateExpression,jsSpecial extend
+syntax region  reasonTemplateExpression contained matchgroup=reasonTemplateBraces start=+\(^\|[^\\]\)${+ms=s+1 end=+}+ contains=@interpolation keepend
+syntax region  reasonTemplateString   start=+`\($\| \)+  skip=+\\`+  end=+`+     contains=reasonTemplateExpression,jsSpecial,@Spell extend
 syntax match   reasonTaggedTemplate   /\<\K\k*\ze`/ nextgroup=reasonTemplateString
 
 
