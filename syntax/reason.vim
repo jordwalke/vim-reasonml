@@ -160,7 +160,7 @@ syn keyword reasonTodo contained TODO FIXME XXX NB NOTE
 syn region reasonFoldBraces start="{" end="}" transparent fold
 " These mess up the highlighting
 " reasonIdentifier,reasonIdentifierPrime,
-syntax cluster interpolation  contains=reasonTemplateString,reasonCommentBlock,reasonMultilineString,reasonString,reasonSelf,reasonBoolean,reasonType,reasonStorage,reasonAssert,reasonFailwith,reasonOperator,reasonConditional,reasonNumber,reasonCharacter,reasonConstructor,labelArgument,labelArgumentPunned,reasonCapsIdent,reasonFloat,reasonModPath,reasonDecNumber,reasonHexNumber,reasonOctNumber,reasonBinNumber,reasonArrowCharacter
+syntax cluster interpolation  contains=reasonTemplateString,reasonCommentLine,reasonCommentBlock,reasonMultilineString,reasonString,reasonSelf,reasonBoolean,reasonType,reasonStorage,reasonAssert,reasonFailwith,reasonOperator,reasonConditional,reasonNumber,reasonCharacter,reasonConstructor,labelArgument,labelArgumentPunned,reasonCapsIdent,reasonFloat,reasonModPath,reasonDecNumber,reasonHexNumber,reasonOctNumber,reasonBinNumber,reasonArrowCharacter
 
 
 " Default highlighting {{{1
