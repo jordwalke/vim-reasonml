@@ -48,7 +48,12 @@ function! reason#RegisterMerlinOnEnvironmentChangedForReadyProject(projectRoot, 
       let g:reasonml_most_recent_ocamlmerlin_path = merlinPath
       let g:reasonml_most_recent_merlin_env = b:merlin_env
       " Registers this buffer with merlin, will trigger the MerlinSelectBinary call.
-      call merlin#Register()
+      try
+        call merlin#Register()
+      catch
+        call console#Warn(v:exception)
+        call console#Warn("Could not load merlin merlin support. The environment might not be setup correctly - see :messages for exception")
+      endtry
     endif
     return 1
   else
